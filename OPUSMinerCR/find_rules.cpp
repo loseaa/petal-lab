@@ -24,7 +24,14 @@
 
 #include <limits>
 #include <iterator>
+// <malloc.h> 不是标准头文件：MSVC 与 glibc 提供它，
+// 但 macOS / BSD 没有（那里 malloc 系列声明在 <stdlib.h>）。
+// 按平台选择，以保证在 macOS 上也能构建。
+#if defined(__APPLE__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
+#include <stdlib.h>
+#else
 #include <malloc.h>
+#endif
 #include <assert.h>
 #include <map>
 #include <algorithm>

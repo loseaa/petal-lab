@@ -4,12 +4,16 @@ obj/
 build/
 *.o
 *.obj
+*.d
+*.gch
+*.pch
 *.a
 *.lib
 *.so
 *.dylib
 
 # 可执行文件
+petal
 *.exe
 *.out
 *.app
