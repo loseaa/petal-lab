@@ -1,7 +1,7 @@
 # Petal —— 构建配置
 #
 # 用法：
-#   make            # 构建 Release 版本（默认）
+#   make            # 构建 Release 版本（默认），产物为 ./petal
 #   make -j8        # 并行构建
 #   make debug      # 构建带调试符号的版本
 #   make clean      # 清理
@@ -14,18 +14,49 @@ CFLAGS   ?= -O2
 
 TARGET := petal
 
-# 以下文件未被 Code::Blocks 工程（petal.cbp）收录，故不参与构建。
-# 它们既没有在 learnerRegistry 中注册，也依赖未启用的条件编译宏：
-#   kdbCDRAM.cpp    —— 依赖 dtCatNode 中受 _kdbCDRAM 保护的条件成员，
-#                      未定义该宏时无法通过编译（.cbp 只登记了 kdbCDRAM.h）
-#   kdbGaussian.cpp —— 同样未接入的实验性学习器（.cbp 只登记了 kdbGaussian.h）
-EXCLUDED_SRCS := kdbCDRAM.cpp kdbGaussian.cpp
+# ---------------------------------------------------------------------------
+# 源码目录（新增模块时把目录加进这里即可）
+# ---------------------------------------------------------------------------
+SRC_DIRS := \
+	src \
+	src/core \
+	src/dist \
+	src/learner \
+	src/learner/bayes \
+	src/learner/tree \
+	src/learner/linear \
+	src/learner/ensemble \
+	src/learner/meta \
+	src/eval \
+	src/filter \
+	src/io \
+	src/utils \
+	thirdparty \
+	thirdparty/alglib \
+	thirdparty/lbfgs
 
-# 顶层 C++ 源文件 + OPUSMinerCR 子模块
-CXX_SRCS := $(filter-out $(EXCLUDED_SRCS),$(wildcard *.cpp)) \
-            $(wildcard OPUSMinerCR/*.cpp)
-# lbfgs.c 是 C 代码，需要用 C 编译器（对应 .cbp 中的 compilerVar="CC"）
-C_SRCS   := $(wildcard *.c)
+# 所有源码目录都作为头文件搜索路径。
+# 项目的 #include 一律写成扁平形式（如 #include "xyDist.h"），
+# 因此只需要把各模块目录加进 -I，不必修改源码中的 include 语句。
+INCLUDES := $(addprefix -I,$(SRC_DIRS))
+CXXFLAGS += $(INCLUDES)
+CFLAGS   += $(INCLUDES)
+
+# ---------------------------------------------------------------------------
+# 源文件
+# ---------------------------------------------------------------------------
+CXX_SRCS := $(foreach d,$(SRC_DIRS),$(wildcard $(d)/*.cpp)) \
+            $(wildcard thirdparty/OPUSMinerCR/*.cpp)
+C_SRCS   := $(wildcard thirdparty/lbfgs/*.c)
+
+# 以下文件未接入构建，与原始 petal.cbp 的收录范围保持一致：
+#   kdbCDRAM.cpp    —— 依赖 dtCatNode 中受 _kdbCDRAM 宏保护的条件成员，
+#                      未定义该宏时无法编译（原工程只登记了 kdbCDRAM.h）
+#   kdbGaussian.cpp —— 未接入的实验性学习器（原工程只登记了 kdbGaussian.h）
+EXCLUDED_SRCS := \
+	src/learner/bayes/kdbCDRAM.cpp \
+	src/learner/bayes/kdbGaussian.cpp
+CXX_SRCS := $(filter-out $(EXCLUDED_SRCS),$(CXX_SRCS))
 
 OBJS := $(CXX_SRCS:.cpp=.o) $(C_SRCS:.c=.o)
 DEPS := $(OBJS:.o=.d)
@@ -34,8 +65,8 @@ DEPS := $(OBJS:.o=.d)
 
 all: $(TARGET)
 
-debug: CXXFLAGS = -std=c++11 -g -O0 -Wall -fexceptions
-debug: CFLAGS   = -g -O0
+debug: CXXFLAGS = -std=c++11 -g -O0 -Wall -fexceptions $(INCLUDES)
+debug: CFLAGS   = -g -O0 $(INCLUDES)
 debug: clean $(TARGET)
 
 $(TARGET): $(OBJS)

@@ -169,21 +169,34 @@ b, v2, f, ?
 
 ---
 
-## 代码结构
+## 目录结构
 
 ```
-petal.cpp                       入口：命令行解析与实验分派
-learner.h / learnerRegistry.*   学习器基类与注册工厂
-instance*.h/cpp                 样本与实例流抽象
-xyDist/xxyDist/xxxyDist/...     联合分布计数结构（性能核心）
-distributionTree.*              条件分布树（kDB / CBN 使用）
-DTree.* / RFDTree.*             决策树与随机森林
-lr.* / LR_SGD.* / subspaceLRSGD.*   线性模型
-eval: xVal / trainTest / streamTest / learningCurves / biasvariance
-filter: 各类 InstanceStream 过滤器与离散化器
-OPUSMinerCR/                    关联规则挖掘子模块（供 -f 特征构造使用）
-ALGLIB_*.cpp / alglibinternal.cpp / lbfgs.c   第三方数值库
+petalAI/
+├── Makefile / CMakeLists.txt
+├── src/
+│   ├── petal.cpp       入口：命令行解析与实验分派
+│   ├── core/           核心抽象：instance / InstanceStream / Learner / 注册工厂
+│   ├── dist/           联合分布计数（性能核心）与条件分布树
+│   ├── learner/
+│   │   ├── bayes/      朴素贝叶斯、TAN、kDB 系、CBN、AODE / AnDE 系
+│   │   ├── tree/       决策树与随机森林
+│   │   ├── linear/     逻辑回归（L-BFGS / SGD / 子空间）
+│   │   ├── ensemble/   Bagging、AdaBoost、Stacking、Feating
+│   │   └── meta/       过滤器包装、外部学习器（Weka / LibSVM / VW 等）
+│   ├── eval/           评估：交叉验证、训练测试、流式、学习曲线、bias-variance
+│   ├── filter/         实例流过滤器与离散化器（MDL / 等深）
+│   ├── io/             数据文件读写
+│   └── utils/          通用工具、随机数、相关性度量
+└── thirdparty/
+    ├── alglib/         ALGLIB 数值库
+    ├── lbfgs/          L-BFGS 优化器（C）
+    └── OPUSMinerCR/    关联规则挖掘（供 -f 特征构造使用）
 ```
+
+> **关于 `#include`**：代码中的头文件引用一律是扁平形式（如 `#include "xyDist.h"`）。
+> 构建时通过 `-I` 把上述各模块目录加入搜索路径，因此**移动文件不需要修改任何源码**。
+> 新增模块时，把目录加进 `Makefile` 的 `SRC_DIRS` 即可。
 
 ### 性能核心的一点说明
 
