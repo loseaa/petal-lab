@@ -46,6 +46,32 @@ cmake --build build -j
 petal <metafile> <datafile> [-p<posClassName>] [<test method args>] -l<learner> [<learner args>]
 ```
 
+### 快速开始
+
+仓库自带示例数据 `examples/weather.{pm,pd}`（200 条样本，含标称与数值属性）：
+
+```bash
+make -j8
+
+# 决策树可直接处理数值属性
+./petal examples/weather.pm examples/weather.pd -x10 -ldtree
+
+# 贝叶斯类只支持标称属性，需先用 -d 离散化
+./petal examples/weather.pm examples/weather.pd -dmdl -x10 -lnb
+./petal examples/weather.pm examples/weather.pd -dmdl -x10 -laode
+
+# 训练/测试与流式评估
+./petal examples/weather.pm examples/weather.pd -dmdl -texamples/weather.pd -laode
+./petal examples/weather.pm examples/weather.pd -dmdl -s -laode
+```
+
+| 目的 | 做法 |
+|---|---|
+| 减少输出噪音 | 加 `-v0`，只输出指标不打印模型 |
+| 查看模型结构 | 默认 `verbosity=1`，决策树会打印树形 |
+| 处理数值属性 | 贝叶斯类加 `-dmdl`；树与线性模型可直接用 |
+| 确认学习器是否支持当前数据 | 直接运行，能力不符会明确报错（如 `Naive Bayes does not support numeric attributes`） |
+
 评估方式（互斥）：
 
 | 选项 | 含义 |
