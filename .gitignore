@@ -1,0 +1,30 @@
+# 构建产物
+bin/
+obj/
+build/
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dylib
+
+# 可执行文件
+*.exe
+*.out
+*.app
+
+# Code::Blocks 工程状态文件（含本机绝对路径，不应入库）
+*.depend
+*.layout
+*.cscope_file_list
+
+# 编辑器 / IDE
+.vscode/
+.idea/
+*.swp
+*~
+
+# 系统文件
+.DS_Store
+Thumbs.db
