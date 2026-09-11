@@ -1,0 +1,17 @@
+{
+  // This is a small local tool; full "strict" mode mostly complains about
+  // missing generic parameters (dict -> dict[str, Any]) which would bury the
+  // handful of genuine Optional-access bugs worth catching.
+  "typeCheckingMode": "basic",
+  "reportMissingTypeArgument": "error",
+  "reportExplicitAny": "none",
+  "reportAny": "none",
+  "reportUnknownMemberType": "none",
+  "reportUnknownArgumentType": "none",
+  "reportUnknownVariableType": "none",
+  "reportUnknownParameterType": "none",
+  "reportUnusedCallResult": "none",
+  "reportImplicitStringConcatenation": "none",
+  "include": ["petal_lab"],
+  "exclude": ["web/node_modules", "web/dist"]
+}

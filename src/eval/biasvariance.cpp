@@ -283,7 +283,7 @@ void biasVariance(learner *theLearner, InstanceStream &instStream,
 	if (noExperiments > 1) {
 		double meanZOLoss = mean(zOLoss);
 		printf(
-				"\nMean 0-1 loss: %0.4f\nMean Bias: %.4f\nMean Variance: %0.4f\nMean RMSE: %0.4f\n\nMean RMSE All: %0.4f\nMean Logarithmic Loss: %0.4f\n",
+				"\nMean 0-1 loss: " PETAL_FLOAT_FMT "\nMean Bias: " PETAL_FLOAT_FMT "\nMean Variance: " PETAL_FLOAT_FMT "\nMean RMSE: " PETAL_FLOAT_FMT "\n\nMean RMSE All: " PETAL_FLOAT_FMT "\nMean Logarithmic Loss: " PETAL_FLOAT_FMT "\n",
 				meanZOLoss, meanZOLoss - variance, variance, mean(rmse),
 				mean(rmsea), mean(logloss));
 	} else {

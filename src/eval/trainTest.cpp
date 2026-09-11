@@ -154,7 +154,7 @@ void trainTest(learner *theLearner, InstanceStream &sourceInstanceStream, Instan
           if (y != 0) {
             fputs(", ", scoref);
           }
-          fprintf(scoref, "%f", classDist[y]);
+          fprintf(scoref, PETAL_FLOAT_FMT, classDist[y]);
         }
       }
 
@@ -184,7 +184,7 @@ void trainTest(learner *theLearner, InstanceStream &sourceInstanceStream, Instan
       
     double MCC = calcMCC(xtab);
     printf("\nMCC:\n");
-    printf("%0.4f\n", MCC);
+    printf(PETAL_FLOAT_FMT "\n", MCC);
   }
 
   if (args.calcAUPRC_) {
@@ -196,8 +196,8 @@ void trainTest(learner *theLearner, InstanceStream &sourceInstanceStream, Instan
     //printf("lab=array([%s])\n",lab.c_str());
   }
 
-  printf("\n%" ICFMT " test cases\n0-1 loss = %0.6f\nRoot mean squared error = %0.3f\n"
-          "Root mean squared error all classes = %0.3f\nLogarithmic loss = %0.3f\n"
+  printf("\n%" ICFMT " test cases\n0-1 loss = " PETAL_FLOAT_FMT "\nRoot mean squared error = " PETAL_FLOAT_FMT "\n"
+          "Root mean squared error all classes = " PETAL_FLOAT_FMT "\nLogarithmic loss = " PETAL_FLOAT_FMT "\n"
           "Training time: %ld\nClassification time: %ld\n", 
           count, zeroOneLoss/static_cast<double>(count), sqrt(squaredError/count), 
           sqrt(squaredErrorAll/(count*testStream->getNoClasses())), -logLoss/count,

@@ -29,18 +29,15 @@
 #endif
 #endif
 
-
-
 #include "xVal.h"
 #include "xValInstanceStream.h"
 #include "utils.h"
 #include "globals.h"
 #include "crosstab.h"
+#include "resultsCollector.h"
 #include "instanceStreamDiscretiser.h"
 #include "correlationMeasures.h"
 
-#include <iomanip>
-#include <fstream>
 #include <assert.h>
 #include <vector>
 #include <math.h>
@@ -51,6 +48,18 @@
 #include <sys/resource.h>
 #endif
 
+/**
+ * Run cross-validation and report the usual performance measures.
+ *
+ * @param args the text following -x: "<folds>[,<experiments>[,<fold>]]".
+ *             Naming a fold restricts the run to that fold only, which is
+ *             useful when re-running one fold of a long experiment.
+ *
+ * Every experiment reshuffles the fold assignment; within an experiment each
+ * fold trains on the other folds and tests on its own. Results are printed in
+ * full and, independently, pushed into the global ResultsCollector so that
+ * --json can emit them for the web front-end.
+ */
 void xVal(learner *theLearner, InstanceStream &instStream, FilterSet &filters, char* args) {
   unsigned int noFolds = 10;
   unsigned int noExperiments = 1;
@@ -83,7 +92,7 @@ void xVal(learner *theLearner, InstanceStream &instStream, FilterSet &filters, c
   std::vector<double> rmseSD;    // standard deviation of rmse from each experiment
   std::vector<double> rmseaSD;    // standard deviation of rmse for all classes from each experiment
   std::vector<double> loglossSD;    // standard deviation of logarithmic loss for all classes from each experiment
-  //std::vector<double> aucSD;    // standard deviation of auc from each experiment
+  // No aucSD: AUC is computed over the pooled predictions, not per fold.
 
   std::vector<long int> trainTimeM;  //training time from each experiment
   std::vector<long int> testTimeM;    //test time from each experiment
@@ -110,20 +119,14 @@ void xVal(learner *theLearner, InstanceStream &instStream, FilterSet &filters, c
     crosstab<InstanceCount> xtab(noClasses);
     XValInstanceStream xValStream(&instStream, noFolds, exp);
 
-	 // std::ofstream proFile("probs.txt");
-     // std::ofstream classFile("class.txt");
-
     for (unsigned int fold = 0; fold < noFolds; fold++) {
-
-        //if the specified fold is less than noFolds, run only the specified fold
-        //otherwise run all the folds
-        if(specifiedFold<noFolds) {
-            if(fold!=specifiedFold)
-            continue;
+      // A fold may be named as the third -x argument; when it is, only that
+      // fold runs. Otherwise specifiedFold == noFolds and all folds run.
+      if (specifiedFold < noFolds) {
+        if (fold != specifiedFold) continue;
 
         printf("\nResults for fold %d\n", fold);
-        }
-
+      }
 
       InstanceCount foldcount = 0;      ///< a count of the number of test instances in the fold
       unsigned int foldzeroOneLoss = 0;
@@ -164,66 +167,13 @@ void xVal(learner *theLearner, InstanceStream &instStream, FilterSet &filters, c
       timeFold= usage.ru_utime.tv_sec+usage.ru_stime.tv_sec;
       #endif
 
-
-
-
-     //std::vector<std::vector<double> > foldProbs(3);
-
-
-//
-//      foldProbs[0].push_back(0.2);
-//      foldProbs[1].push_back(0.8);
-//
-//      foldProbs[0].push_back(0.3);
-//      foldProbs[1].push_back(0.7);
-//
-//      foldProbs[0].push_back(0.5);
-//      foldProbs[1].push_back(0.5);
-//      foldProbs[0].push_back(0.5);
-//      foldProbs[1].push_back(0.5);
-//
-//      foldProbs[0].push_back(0.5);
-//      foldProbs[1].push_back(0.5);
-//
-//      foldProbs[0].push_back(0.5);
-//      foldProbs[1].push_back(0.5);
-//
-//            foldProbs[0].push_back(0.7);
-//      foldProbs[1].push_back(0.3);
-//
-//foldTrueClasses.push_back(1);
-//foldTrueClasses.push_back(1);
-//foldTrueClasses.push_back(0);
-//foldTrueClasses.push_back(0);
-//foldTrueClasses.push_back(1);
-//foldTrueClasses.push_back(1);
-//foldTrueClasses.push_back(0);
-//
-//      foldProbs[0].push_back(0.2);
-//      foldProbs[1].push_back(0.5);
-//         foldProbs[2].push_back(0.3);
-//      foldProbs[0].push_back(0.5);
-//      foldProbs[1].push_back(0.3);
-//           foldProbs[2].push_back(0.2);
-//         foldProbs[0].push_back(0.4);
-//      foldProbs[1].push_back(0.2);
-//               foldProbs[2].push_back(0.4);
-//            foldProbs[0].push_back(0.2);
-//      foldProbs[1].push_back(0.3);
-//               foldProbs[2].push_back(0.5);
-//
-//foldTrueClasses.push_back(0);
-//foldTrueClasses.push_back(2);
-//foldTrueClasses.push_back(1);
-//foldTrueClasses.push_back(1);
-
-
+      // probs is [class][instance]: AUC needs one full class vector per
+      // instance; ResultsCollector transposes it to [instance][class].
 
       while (!filteredInstanceStream->isAtEnd()) {
         if (filteredInstanceStream->advance(inst)) {
           count++;
           foldcount++;
-
 
           theLearner->classify(inst, classDist);
 
@@ -254,20 +204,12 @@ void xVal(learner *theLearner, InstanceStream &instStream, FilterSet &filters, c
 
           for (CatValue y = 0; y < noClasses; y++) {
             probs[y].push_back(classDist[y]);
-           // proFile<<std::fixed<<std::setprecision(20)<<classDist[y]<<' ';
           }
 
           trueClasses.push_back(trueClass);
 
-      //    classFile<<trueClass<<std::endl;
-       //   proFile<<std::endl;
-
-          //print(classDist);
-         // printf("\n");
         }
       }
-
-
 
       #ifdef __linux__
       getrusage(RUSAGE_SELF, &usage);
@@ -284,27 +226,19 @@ void xVal(learner *theLearner, InstanceStream &instStream, FilterSet &filters, c
         foldrmsea.push_back(sqrt(foldsquaredErrorAll/(foldcount* noClasses)));
         foldlogloss.push_back(-foldlogLoss/foldcount);
 
-
         if (verbosity >= 2){
-            printf("\n0-1 loss (fold %d): %0.4f\n", fold, foldzeroOneLoss/static_cast<double>(foldcount));
-            printf("RMSE (fold %d): %0.4f\n", fold, sqrt(foldsquaredError/foldcount));
-            printf("RMSE All Classes (fold %d):  %0.4f\n", fold, sqrt(foldsquaredErrorAll/(foldcount* noClasses)));
-            printf("Logarithmic Loss (fold %d):  %0.4f\n", fold, -foldlogLoss/foldcount);
+            printf("\n0-1 loss (fold %d): " PETAL_FLOAT_FMT "\n", fold, foldzeroOneLoss/static_cast<double>(foldcount));
+            printf("RMSE (fold %d): " PETAL_FLOAT_FMT "\n", fold, sqrt(foldsquaredError/foldcount));
+            printf("RMSE All Classes (fold %d):  " PETAL_FLOAT_FMT "\n", fold, sqrt(foldsquaredErrorAll/(foldcount* noClasses)));
+            printf("Logarithmic Loss (fold %d):  " PETAL_FLOAT_FMT "\n", fold, -foldlogLoss/foldcount);
             printf("--------------------------------------------\n");
         }
       }
     }
 
-   // print(trueClasses);printf("\n");
-	//proFile.close();
-	//classFile.close();
-
-     //compute the auc based on classDist and trueClasses
-    double a=calcMultiAUC(probs, trueClasses);
-
-//	if(noClasses==2)
-//		a=calcBinaryAUC(probs, trueClasses);
-
+    // AUC is over the pooled predictions of all folds, so it needs the whole
+    // experiment rather than one fold's worth of them.
+    const double a = calcMultiAUC(probs, trueClasses);
 
     zOLoss.push_back(zeroOneLoss/static_cast<double>(count));
     assert(squaredError >= 0);
@@ -318,7 +252,6 @@ void xVal(learner *theLearner, InstanceStream &instStream, FilterSet &filters, c
     rmseaSD.push_back(stddev(foldrmsea));
     loglossSD.push_back(stddev(foldlogloss));
 
-
     trainTimeM.push_back(trainTime /= noFolds);
     testTimeM.push_back(testTime /= noFolds);
 
@@ -328,11 +261,53 @@ void xVal(learner *theLearner, InstanceStream &instStream, FilterSet &filters, c
       printResults(xtab, xValStream);
       double MCC = calcMCC(xtab);
       printf("\nMCC:\n");
-      printf("%0.4f\n", MCC);
+      printf(PETAL_FLOAT_FMT "\n", MCC);
+    }
+
+    // Structured results for the web front-end (see src/utils/resultsCollector.h).
+    // Collected unconditionally: ResultsCollector::write() only runs when --json
+    // was supplied, so a plain text run pays just a few vector pushes per learner.
+    {
+      const std::string learnerName = *theLearner->getName();
+
+      results().setMode("xval");
+      results().addMetric(learnerName, "0-1_loss",   static_cast<int>(exp), -1, zOLoss.back());
+      results().addMetric(learnerName, "rmse",       static_cast<int>(exp), -1, rmse.back());
+      results().addMetric(learnerName, "rmse_all",   static_cast<int>(exp), -1, rmsea.back());
+      results().addMetric(learnerName, "log_loss",   static_cast<int>(exp), -1, logloss.back());
+      results().addMetric(learnerName, "auc",        static_cast<int>(exp), -1, auc.back());
+      results().addMetric(learnerName, "mcc",        static_cast<int>(exp), -1, calcMCC(xtab));
+      results().addMetric(learnerName, "train_time", static_cast<int>(exp), -1,
+                          static_cast<double>(trainTimeM.back()));
+      results().addMetric(learnerName, "test_time",  static_cast<int>(exp), -1,
+                          static_cast<double>(testTimeM.back()));
+
+      // Per-fold values drive the box plots. Empty folds are skipped upstream,
+      // so this index counts non-empty folds rather than naming the fold itself.
+      for (size_t fi = 0; fi < foldZOLoss.size(); ++fi) {
+        results().addMetric(learnerName, "0-1_loss", static_cast<int>(exp),
+                            static_cast<int>(fi), foldZOLoss[fi]);
+        results().addMetric(learnerName, "rmse", static_cast<int>(exp),
+                            static_cast<int>(fi), foldrmse[fi]);
+        results().addMetric(learnerName, "rmse_all", static_cast<int>(exp),
+                            static_cast<int>(fi), foldrmsea[fi]);
+        results().addMetric(learnerName, "log_loss", static_cast<int>(exp),
+                            static_cast<int>(fi), foldlogloss[fi]);
+      }
+
+      std::vector<unsigned int> flat(noClasses * noClasses);
+      for (unsigned int y = 0; y < noClasses; ++y) {
+        for (unsigned int p = 0; p < noClasses; ++p) {
+          flat[y * noClasses + p] = static_cast<unsigned int>(xtab[y][p]);
+        }
+      }
+      results().addConfusion(learnerName, noClasses, flat);
+
+      // xVal already gathers per-instance probabilities for AUC; hand the same
+      // data to the collector so the front-end can draw ROC/PR curves.
+      results().addPredictions(learnerName, probs, trueClasses);
     }
   }
-
-
 
   printf("\n0-1 loss:\n");
   print(zOLoss);
@@ -368,8 +343,8 @@ void xVal(learner *theLearner, InstanceStream &instStream, FilterSet &filters, c
   print(testTimeM); printf(" seconds");
 
   if (noExperiments > 1) {
-    printf("\nMean 0-1 loss: %0.4f + %0.4f\nMean RMSE: %0.4f + %0.4f\nMean RMSE All: %0.4f + %0.4f\n"
-            "Mean Logarithmic Loss: %0.4f + %0.4f\nMean Training time: %ld\nMean Classification time: %ld\n",
+    printf("\nMean 0-1 loss: " PETAL_FLOAT_FMT " + " PETAL_FLOAT_FMT "\nMean RMSE: " PETAL_FLOAT_FMT " + " PETAL_FLOAT_FMT "\nMean RMSE All: " PETAL_FLOAT_FMT " + " PETAL_FLOAT_FMT "\n"
+            "Mean Logarithmic Loss: " PETAL_FLOAT_FMT " + " PETAL_FLOAT_FMT "\nMean Training time: %ld\nMean Classification time: %ld\n",
             mean(zOLoss), stddev(zOLoss), mean(rmse), stddev(rmse), mean(rmsea), stddev(rmsea), mean(logloss),
             stddev(logloss),mean(trainTimeM),mean(testTimeM));
   }

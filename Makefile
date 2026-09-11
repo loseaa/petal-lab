@@ -61,9 +61,14 @@ CXX_SRCS := $(filter-out $(EXCLUDED_SRCS),$(CXX_SRCS))
 OBJS := $(CXX_SRCS:.cpp=.o) $(C_SRCS:.c=.o)
 DEPS := $(OBJS:.o=.d)
 
-.PHONY: all debug clean run
+.PHONY: all debug clean run compile_commands
 
 all: $(TARGET)
+
+# 生成 compile_commands.json，供 clangd（IDE 智能感知）使用。
+# SRC_DIRS / CXXFLAGS / EXCLUDED_SRCS 有变动时重新执行。
+compile_commands:
+	@python3 tools/gen_compile_commands.py
 
 debug: CXXFLAGS = -std=c++11 -g -O0 -Wall -fexceptions $(INCLUDES)
 debug: CFLAGS   = -g -O0 $(INCLUDES)

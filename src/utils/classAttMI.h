@@ -20,6 +20,7 @@
 */
 #pragma once
 #include "xyDist.h"
+#include "globals.h"
 #include <stdio.h>
 
 class classAttMI
@@ -37,7 +38,7 @@ public:
 
   void print() {
     for (std::vector<float>::const_iterator it = mi.begin(); it != mi.end(); it++) {
-      printf("%6.3f ", *it);
+      printf(PETAL_FLOAT_FMT " ", *it);
     }
     putchar('\n');
   }

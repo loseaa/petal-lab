@@ -326,7 +326,7 @@ void aodeExt::finalisePass() {
 					if (verbosity >= 3) {
 						printf("The order of attributes ordered by the measure:\n");
 						for (CategoricalAttribute a = 0; a < noCatAtts_; a++) {
-							printf("%d:\t%f\t%u\n",  orderedAtts_[a],measure[orderedAtts_[a]],instanceStream_->getNoValues(orderedAtts_[a]));
+							printf("%d:\t" PETAL_FLOAT_FMT "\t%u\n",  orderedAtts_[a],measure[orderedAtts_[a]],instanceStream_->getNoValues(orderedAtts_[a]));
 						}
 					}
 				}
@@ -425,7 +425,7 @@ void aodeExt::finalisePass() {
 			if (verbosity >= 3) {
 				printf("weight:\n");
 				for (CategoricalAttribute a = 0; a < noCatAtts_; a++) {
-					printf("%f,", weight_[a]);
+					printf(PETAL_FLOAT_FMT ",", weight_[a]);
 				}
 				printf("\n");
 			}
@@ -494,7 +494,7 @@ void aodeExt::finalisePass() {
 
 						printf("The order of attributes ordered by the measure:\n");
 						for (CategoricalAttribute a = 0; a < noCatAtts_; a++) {
-							printf("%d:\t%f\t%u\n",  order[a],measure[order[a]],instanceStream_->getNoValues(order[a]));
+							printf("%d:\t" PETAL_FLOAT_FMT "\t%u\n",  order[a],measure[order[a]],instanceStream_->getNoValues(order[a]));
 						}
 						printf("\n");
 
@@ -602,7 +602,7 @@ void aodeExt::finalisePass() {
 							"The following attributes have been selected by correlation filter:\n");
 					for (CategoricalAttribute a = 0; a < noCatAtts_; a++) {
 						if (active_[order[a]])
-							printf("%d,%f\t", order[a], measure[order[a]]);
+							printf("%d," PETAL_FLOAT_FMT "\t", order[a], measure[order[a]]);
 					}
 					printf("\n");
 				}
@@ -656,7 +656,7 @@ void aodeExt::finalisePass() {
 
 						if (verbosity >= 2){
 
-							printf("the chi-square value of attribute %s: %40.40f\n",instanceStream_->getCatAttName(a), chisqVal);
+							printf("the chi-square value of attribute %s: " PETAL_FLOAT_FMT "\n",instanceStream_->getCatAttName(a), chisqVal);
 
 						}
 
@@ -727,7 +727,7 @@ void aodeExt::finalisePass() {
 				if (verbosity >= 3) {
 					printf("loocv accuracy weights:\n");
 					for (CategoricalAttribute a = 0; a < noCatAtts_; a++) {
-						printf("%f,", weight_[a]);
+						printf(PETAL_FLOAT_FMT ",", weight_[a]);
 					}
 					printf("\n");
 				}
@@ -1073,7 +1073,7 @@ void aodeExt::classify(const instance &inst, std::vector<double> &classDist, fda
 
 	if (verbosity >= 5) {
 		for (CatValue i = 0; i < noCatAtts_; i++) {
-			printf("%f\n", weight_[i]);
+			printf(PETAL_FLOAT_FMT "\n", weight_[i]);
 		}
 	}
 
@@ -1121,7 +1121,7 @@ void aodeExt::classify(const instance &inst, std::vector<double> &classDist, fda
 									* scaleFactor;
 								if (verbosity >= 5&&parent==1) {
 
-									printf("%u,%u,%f\n", parent, y,
+									printf("%u,%u," PETAL_FLOAT_FMT "\n", parent, y,
 										spodeProbs[parent][y]);
 								}
 							}
@@ -1227,7 +1227,7 @@ void aodeExt::classify(const instance &inst, std::vector<double> &classDist, fda
 									* scaleFactor;
 								if (verbosity >= 4&&parent==1) {
 
-									printf("%u,%u,%f\n", parent, y,
+									printf("%u,%u," PETAL_FLOAT_FMT "\n", parent, y,
 										spodeProbs[parent][y]);
 								}
 							}
@@ -1350,7 +1350,7 @@ void aodeExt::classify(const instance &inst, std::vector<double> &classDist, fda
 									* scaleFactor;
 						if (verbosity >= 4&&count_==1&&parent==1) {
 
-							printf("%u,%u,%f\n", parent, y,
+							printf("%u,%u," PETAL_FLOAT_FMT "\n", parent, y,
 									spodeProbs[parent][y]);
 						}
 						}
@@ -1450,7 +1450,7 @@ void aodeExt::classify(const instance &inst, std::vector<double> &classDist, fda
 			for (CatValue y = 0; y < noClasses_; y++) {
 				classDist[y] += spodeProbs[parent][y];
 				if(verbosity>5&&count_==1)
-				printf("%f,",spodeProbs[parent][y]);
+				printf(PETAL_FLOAT_FMT ",",spodeProbs[parent][y]);
 			}
 			if(verbosity>5&&count_==1)
 				printf("\n");

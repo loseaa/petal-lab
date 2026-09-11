@@ -17,3 +17,19 @@
 ** Please report any bugs to Geoff Webb <geoff.webb@monash.edu>
 */
 extern unsigned int verbosity;
+
+/**
+ * The printf conversion used for every floating-point value Petal writes out.
+ *
+ * Petal used to mix %f, %.2f, %.3f, %0.5f, %.10g and %.17g from one report to
+ * the next, so the same metric could come out with different numbers of
+ * decimals depending on which mode produced it. Every decimal now goes through
+ * this one macro: four decimal places, fixed notation, everywhere.
+ *
+ * Use it by concatenation next to the surrounding literal, e.g.
+ *   printf("0-1 loss = " PETAL_FLOAT_FMT "\n", loss);
+ *
+ * Change it here and the whole system follows — do not hand-write a precision
+ * at a call site.
+ */
+#define PETAL_FLOAT_FMT "%.4f"

@@ -104,7 +104,7 @@ void InstanceSample::sampleWithWeights(instance &inst,std::vector<float> &weight
 
 			if(verbosity>=3)
 			{
-				printf("the probability to search: %f\n"
+				printf("the probability to search: " PETAL_FLOAT_FMT "\n"
 						"output the cdf:\n",pReplace);
 				print(CDF_);
 				printf("\n");

@@ -1023,9 +1023,9 @@ void kdbExt::finalisePass() {
           for (unsigned int k=0; k<=k_;k++) {
             printf("k = %d : ",k+1);
             for (unsigned int att=0; att<noCatAtts_;att++) {
-              printf("%.3f,", -foldLossFunctallK_[k][att]);
+              printf(PETAL_FLOAT_FMT ",", -foldLossFunctallK_[k][att]);
             }
-            printf("%.3f(class)\n", -foldLossFunctallK_[k][noCatAtts_]);
+            printf(PETAL_FLOAT_FMT "(class)\n", -foldLossFunctallK_[k][noCatAtts_]);
           }
         }
         else{
@@ -1033,9 +1033,9 @@ void kdbExt::finalisePass() {
           for (unsigned int k=0; k<=k_;k++) {
             printf("k = %d : ",k);
             for (std::vector<CategoricalAttribute>::const_iterator it = order_.begin(); it != order_.end(); it++){
-              printf("%.3f,", foldLossFunctallK_[k][*it]);
+              printf(PETAL_FLOAT_FMT ",", foldLossFunctallK_[k][*it]);
             }
-            printf("%.3f(class)\n", foldLossFunctallK_[k][noCatAtts_]);
+            printf(PETAL_FLOAT_FMT "(class)\n", foldLossFunctallK_[k][noCatAtts_]);
           }
         }
       }
@@ -1076,9 +1076,9 @@ void kdbExt::finalisePass() {
         else
           printf("RMSE: ");
         for (unsigned int att=0; att<foldLossFunct_.size()-1;att++) {
-          printf("%.3f,", foldLossFunct_[att]);
+          printf(PETAL_FLOAT_FMT ",", foldLossFunct_[att]);
         }
-        printf("%.3f(class)", foldLossFunct_[noCatAtts_]);
+        printf(PETAL_FLOAT_FMT "(class)", foldLossFunct_[noCatAtts_]);
       }
 
       if(verbosity>=3)

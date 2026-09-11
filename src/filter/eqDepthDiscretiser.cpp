@@ -120,7 +120,7 @@ void eqDepthDiscretiser::discretise(std::vector<NumValue> &vals, const std::vect
           error("discretisation type not supported");
       }
       if(verbosity>=2)
-        printf("Interval size = %f\n",intervalSize);
+        printf("Interval size = " PETAL_FLOAT_FMT "\n",intervalSize);
 
       // find each of the cutpoints.
       // there is one less cutpoint than there are intervals

@@ -494,7 +494,7 @@ void aode::finalisePass() {
 					if (verbosity >= 3) {
 						printf("The order of attributes ordered by the measure:\n");
 						for (CategoricalAttribute a = 0; a < noCatAtts_; a++) {
-							printf("%d:\t%f\t%u\n",  orderedAtts[a],measure[orderedAtts[a]],instanceStream_->getNoValues(orderedAtts[a]));
+							printf("%d:\t" PETAL_FLOAT_FMT "\t%u\n",  orderedAtts[a],measure[orderedAtts[a]],instanceStream_->getNoValues(orderedAtts[a]));
 						}
 					}
 				}
@@ -665,7 +665,7 @@ void aode::finalisePass() {
                 orderedAtts.push_back(max_ind);
                 if(verbosity>=2)
                 {
-                    printf("%f,%d\n",measure[max_ind],max_ind);
+                    printf(PETAL_FLOAT_FMT ",%d\n",measure[max_ind],max_ind);
                 }
 
                 float J,Jmax;
@@ -703,7 +703,7 @@ void aode::finalisePass() {
                             max_ind=a;
                             if(verbosity>=3)
                             {
-                                printf("==%f,%d\n",Jmax,max_ind);
+                                printf("==" PETAL_FLOAT_FMT ",%d\n",Jmax,max_ind);
                             }
 
                         }
@@ -715,13 +715,13 @@ void aode::finalisePass() {
                             }
                             if(verbosity>=3)
                             {
-                                printf("==%f,%d\n",Jmax,max_ind);
+                                printf("==" PETAL_FLOAT_FMT ",%d\n",Jmax,max_ind);
                             }
                         }
                     }
                     if(verbosity>=2)
                     {
-                        printf("%f,%d\n",Jmax,max_ind);
+                        printf(PETAL_FLOAT_FMT ",%d\n",Jmax,max_ind);
                     }
                     orderedAtts.push_back(max_ind);
                 }
@@ -741,7 +741,7 @@ void aode::finalisePass() {
                 orderedAtts.push_back(max_ind);
                 if(verbosity>=2)
                 {
-                    printf("%f,%d\n",measure[max_ind],max_ind);
+                    printf(PETAL_FLOAT_FMT ",%d\n",measure[max_ind],max_ind);
                 }
 
                 float J,Jmax;
@@ -777,7 +777,7 @@ void aode::finalisePass() {
                             max_ind=a;
                             if(verbosity>=3)
                             {
-                                printf("==%f,%d\n",Jmax,max_ind);
+                                printf("==" PETAL_FLOAT_FMT ",%d\n",Jmax,max_ind);
                             }
 
                         }
@@ -789,13 +789,13 @@ void aode::finalisePass() {
                             }
                             if(verbosity>=3)
                             {
-                                printf("==%f,%d\n",Jmax,max_ind);
+                                printf("==" PETAL_FLOAT_FMT ",%d\n",Jmax,max_ind);
                             }
                         }
                     }
                     if(verbosity>=2)
                     {
-                        printf("%f,%d\n",Jmax,max_ind);
+                        printf(PETAL_FLOAT_FMT ",%d\n",Jmax,max_ind);
                     }
                     orderedAtts.push_back(max_ind);
                 }
@@ -817,7 +817,7 @@ void aode::finalisePass() {
 
 			if (verbosity >= 2) {
 				for (CategoricalAttribute a = 0; a < noCatAtts_; a++) {
-					printf("%f\n", weight_[a]);
+					printf(PETAL_FLOAT_FMT "\n", weight_[a]);
 				}
 			}
 		}
@@ -838,7 +838,7 @@ void aode::finalisePass() {
 
 			if (verbosity >= 3) {
 				for (CategoricalAttribute a = 0; a < noCatAtts_; a++) {
-					printf("%f\n", weight_[a]);
+					printf(PETAL_FLOAT_FMT "\n", weight_[a]);
 				}
 			}
 
@@ -888,7 +888,7 @@ void aode::finalisePass() {
             if (verbosity >= 2) {
                 printf("The kullback-leibler weights are:\n");
                 for (CategoricalAttribute a = 0; a < noCatAtts_; a++) {
-                    printf("%d:\t%f\n", a,weight_[a]);
+                    printf("%d:\t" PETAL_FLOAT_FMT "\n", a,weight_[a]);
                 }
             }
 
@@ -923,7 +923,7 @@ void aode::finalisePass() {
 
                     if(verbosity>=2)
                     {
-                        printf("a=%d,v=%d,kld=%f,rij=%f\n",a,value,kld,r_a_v);
+                        printf("a=%d,v=%d,kld=" PETAL_FLOAT_FMT ",rij=" PETAL_FLOAT_FMT "\n",a,value,kld,r_a_v);
 
                     }
                 }
@@ -962,7 +962,7 @@ void aode::finalisePass() {
             if (verbosity >= 3) {
                 printf("The cross entropy weights are:\n");
                 for (CategoricalAttribute a = 0; a < noCatAtts_; a++) {
-                    printf("%d:\t%f\n", a,weight_[a]);
+                    printf("%d:\t" PETAL_FLOAT_FMT "\n", a,weight_[a]);
                 }
             }
 
@@ -986,7 +986,7 @@ void aode::finalisePass() {
 
                     if(verbosity>=2)
                     {
-                        printf("a=%d,v=%d,cross_entropy=%f\n",a,value,crossentropy);
+                        printf("a=%d,v=%d,cross_entropy=" PETAL_FLOAT_FMT "\n",a,value,crossentropy);
 
                     }
                 }
@@ -1046,7 +1046,7 @@ void aode::finalisePass() {
             if (verbosity >= 3) {
                 printf("Jensen-Shannon Divergence are:\n");
                 for (CategoricalAttribute a = 0; a < noCatAtts_; a++) {
-                    printf("%d:\t%f\n", a,weight_[a]);
+                    printf("%d:\t" PETAL_FLOAT_FMT "\n", a,weight_[a]);
                 }
             }
 
@@ -1213,7 +1213,7 @@ void aode::finalisePass() {
 
 						printf("The order of attributes ordered by the measure:\n");
 						for (CategoricalAttribute a = 0; a < noCatAtts_; a++) {
-							printf("%d:\t%f\t%u\n",  order[a],measure[order[a]],instanceStream_->getNoValues(order[a]));
+							printf("%d:\t" PETAL_FLOAT_FMT "\t%u\n",  order[a],measure[order[a]],instanceStream_->getNoValues(order[a]));
 						}
 						printf("\n");
 
@@ -1317,7 +1317,7 @@ void aode::finalisePass() {
 
                             if (verbosity >= 2){
 
-                                printf("the chi-square value of attribute %s: %40.40f\n",instanceStream_->getCatAttName(a), chisqVal);
+                                printf("the chi-square value of attribute %s: " PETAL_FLOAT_FMT "\n",instanceStream_->getCatAttName(a), chisqVal);
 
                             }
 
@@ -1392,7 +1392,7 @@ void aode::finalisePass() {
                             "The following attributes have been selected by correlation filter:\n");
                     for (CategoricalAttribute a = 0; a < noCatAtts_; a++) {
                         if (active_[order[a]])
-                            printf("%d,%f\t", order[a], measure[order[a]]);
+                            printf("%d," PETAL_FLOAT_FMT "\t", order[a], measure[order[a]]);
                     }
                     printf("\n");
                 }
@@ -1753,7 +1753,7 @@ void aode::classify(const instance &inst, std::vector<double> &classDist) {
 
 	if (verbosity >= 4) {
 		for (CatValue i = 0; i < noCatAtts_; i++) {
-			printf("%f\n", weight_[i]);
+			printf(PETAL_FLOAT_FMT "\n", weight_[i]);
 		}
 	}
 
@@ -1802,7 +1802,7 @@ void aode::classify(const instance &inst, std::vector<double> &classDist) {
 									* scaleFactor;
 							if (verbosity >= 5&&parent==1) {
 
-								printf("%u,%u,%f\n", parent, y,
+								printf("%u,%u," PETAL_FLOAT_FMT "\n", parent, y,
 										spodeProbs[parent][y]);
 							}
 						}
@@ -1928,7 +1928,7 @@ void aode::classify(const instance &inst, std::vector<double> &classDist) {
 									* scaleFactor;
 						if (verbosity >= 5&&parent==1) {
 
-							printf("%u,%u,%f\n", parent, y,
+							printf("%u,%u," PETAL_FLOAT_FMT "\n", parent, y,
 									spodeProbs[parent][y]);
 						}
 						}
@@ -2056,7 +2056,7 @@ void aode::classify(const instance &inst, std::vector<double> &classDist) {
 			for (CatValue y = 0; y < noClasses_; y++) {
 				classDist[y] += spodeProbs[parent][y];
 				if(count_==1&&verbosity>=4)
-				printf("%f,",spodeProbs[parent][y]);
+				printf(PETAL_FLOAT_FMT ",",spodeProbs[parent][y]);
 			}
 			if(count_==1&&verbosity>=4)
 				printf("\n");

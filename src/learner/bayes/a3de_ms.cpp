@@ -1141,7 +1141,7 @@ void a3de_ms::a2deClassify(const instance &inst, std::vector<double> &classDist,
 
 					}
 					if (verbosity == 4)
-						printf("%f,", spodeProbs[father][mother][y]);
+						printf(PETAL_FLOAT_FMT ",", spodeProbs[father][mother][y]);
 				}
 
 			}

@@ -449,7 +449,7 @@ void TAN::finalisePass() {
 
 					if (verbosity >= 2){
 
-						printf("the chi-square value of attribute %s: %40.40f\n",instanceStream_->getCatAttName(a), chisqVal);
+						printf("the chi-square value of attribute %s: " PETAL_FLOAT_FMT "\n",instanceStream_->getCatAttName(a), chisqVal);
 
 					}
 
@@ -516,7 +516,7 @@ void TAN::finalisePass() {
                     if (verbosity >= 3) {
                         printf("The order of attributes ordered by mutual information:\n");
                         for (CategoricalAttribute a = 0; a < noCatAtts_; a++) {
-                            printf("%d:\t%f\t%u\n",  orderedAtts_[a],measure[orderedAtts_[a]],instanceStream_->getNoValues(orderedAtts_[a]));
+                            printf("%d:\t" PETAL_FLOAT_FMT "\t%u\n",  orderedAtts_[a],measure[orderedAtts_[a]],instanceStream_->getNoValues(orderedAtts_[a]));
                         }
                     }
                 }
@@ -541,7 +541,7 @@ void TAN::finalisePass() {
                     if (verbosity >= 3) {
                         printf("The order of attributes ordered by symmetrical uncertainty:\n");
                         for (CategoricalAttribute a = 0; a < noCatAtts_; a++) {
-                            printf("%d:\t%f\t%u\n",  orderedAtts_[a],measure[orderedAtts_[a]],instanceStream_->getNoValues(orderedAtts_[a]));
+                            printf("%d:\t" PETAL_FLOAT_FMT "\t%u\n",  orderedAtts_[a],measure[orderedAtts_[a]],instanceStream_->getNoValues(orderedAtts_[a]));
                         }
                     }
                 }
@@ -636,7 +636,7 @@ void TAN::finalisePass() {
                 orderedAtts_.push_back(max_ind);
                 if(verbosity>=2)
                 {
-                    printf("%f,%d\n",measure[max_ind],max_ind);
+                    printf(PETAL_FLOAT_FMT ",%d\n",measure[max_ind],max_ind);
                 }
 
                 float J,Jmax;
@@ -680,7 +680,7 @@ void TAN::finalisePass() {
                             max_ind=a;
                             if(verbosity>=3)
                             {
-                                printf("==%f,%d\n",Jmax,max_ind);
+                                printf("==" PETAL_FLOAT_FMT ",%d\n",Jmax,max_ind);
                             }
 
                         }
@@ -692,13 +692,13 @@ void TAN::finalisePass() {
                             }
                             if(verbosity>=3)
                             {
-                                printf("==%f,%d\n",Jmax,max_ind);
+                                printf("==" PETAL_FLOAT_FMT ",%d\n",Jmax,max_ind);
                             }
                         }
                     }
                     if(verbosity>=2)
                     {
-                        printf("%f,%d\n",Jmax,max_ind);
+                        printf(PETAL_FLOAT_FMT ",%d\n",Jmax,max_ind);
                     }
                     orderedAtts_.push_back(max_ind);
                 }
@@ -717,7 +717,7 @@ void TAN::finalisePass() {
                 orderedAtts_.push_back(max_ind);
                 if(verbosity>=2)
                 {
-                    printf("%f,%d\n",measure[max_ind],max_ind);
+                    printf(PETAL_FLOAT_FMT ",%d\n",measure[max_ind],max_ind);
                 }
 
                 float J,Jmax;
@@ -753,7 +753,7 @@ void TAN::finalisePass() {
                             max_ind=a;
                             if(verbosity>=3)
                             {
-                                printf("==%f,%d\n",Jmax,max_ind);
+                                printf("==" PETAL_FLOAT_FMT ",%d\n",Jmax,max_ind);
                             }
 
                         }
@@ -765,13 +765,13 @@ void TAN::finalisePass() {
                             }
                             if(verbosity>=3)
                             {
-                                printf("==%f,%d\n",Jmax,max_ind);
+                                printf("==" PETAL_FLOAT_FMT ",%d\n",Jmax,max_ind);
                             }
                         }
                     }
                     if(verbosity>=2)
                     {
-                        printf("%f,%d\n",Jmax,max_ind);
+                        printf(PETAL_FLOAT_FMT ",%d\n",Jmax,max_ind);
                     }
                     orderedAtts_.push_back(max_ind);
                 }
@@ -886,7 +886,7 @@ void TAN::finalisePass() {
 						double chisqVal = chiSquare(tab, rows, cols);
 
 						if (verbosity >=4){
-							printf("the chi-square value of attribute %s: %40.40f\n",instanceStream_->getCatAttName(a), chisqVal);
+							printf("the chi-square value of attribute %s: " PETAL_FLOAT_FMT "\n",instanceStream_->getCatAttName(a), chisqVal);
 						}
 
 						measure.push_back(chisqVal);
@@ -904,7 +904,7 @@ void TAN::finalisePass() {
                     if (verbosity >=3) {
                         printf("The order of attributes ordered by chisq test:\n");
                         for (CategoricalAttribute a = 0; a < noCatAtts_; a++) {
-                            printf("%d:\t%f\t%u\n",  orderedAtts_[a],measure[orderedAtts_[a]],instanceStream_->getNoValues(orderedAtts_[a]));
+                            printf("%d:\t" PETAL_FLOAT_FMT "\t%u\n",  orderedAtts_[a],measure[orderedAtts_[a]],instanceStream_->getNoValues(orderedAtts_[a]));
                         }
                     }
                 }

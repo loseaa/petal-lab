@@ -252,7 +252,7 @@ void Feating2Learner::train(InstanceStream &is) {
 
 					for (CategoricalAttribute a1 = 1; a1 < noAtts_; ++a1) {
 						for (CategoricalAttribute a2 = 0; a2 < a1; ++a2) {
-							printf("%u,%u,%f\n", a1, a2, pmi[a1][a2]);
+							printf("%u,%u," PETAL_FLOAT_FMT "\n", a1, a2, pmi[a1][a2]);
 						}
 					}
 				}
@@ -324,7 +324,7 @@ void Feating2Learner::train(InstanceStream &is) {
 						for (CategoricalAttribute a2 = 0; a2 < a1; ++a2) {
 							if (selected_[a1][a2] == true) {
 
-								printf("%u,%u,%f\n", a1, a2, pmi[a1][a2]);
+								printf("%u,%u," PETAL_FLOAT_FMT "\n", a1, a2, pmi[a1][a2]);
 							}
 						}
 					}

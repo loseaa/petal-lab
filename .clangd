@@ -1,0 +1,56 @@
+# clangd（IDE 智能感知）配置
+#
+# 为什么需要这个文件
+# ------------------
+# 本项目所有 #include 一律写成"扁平形式"，例如 src/petal.cpp 中：
+#     #include "instanceFile.h"
+# 而该头文件实际位于 src/io/instanceFile.h。
+#
+# 首选方案：compile_commands.json
+# --------------------------------
+# 由 `make compile_commands` 生成（脚本 tools/gen_compile_commands.py 从
+# Makefile 读取 SRC_DIRS / CXXFLAGS），其中 -I 为绝对路径且工作目录为项目根，
+# clangd 可直接获得与 make 完全一致的命令。
+# 该文件是构建产物且含本机绝对路径，已加入 .gitignore；
+# SRC_DIRS 有增减时重新执行 `make compile_commands`。
+#
+# 本文件的作用：兜底与补充
+# ------------------------
+# 对于未收录进 compile_commands.json 的新文件，clangd 会回退成合成命令，
+# 其工作目录是"文件所在目录"（例如 src/petal.cpp 的工作目录是 src/），
+# 若没有这里的 -I，就会报
+#     'instanceFile.h' file not found
+# 并级联出 MTRand / std::vector / LearningCurveArgs 等一连串"未知类型"——
+# 这些都不是真实的代码缺陷，只是 include 解析失败的连带反应。
+# 命中 compile_commands.json 时，下面的相对路径按项目根解析，同样正确且无害。
+#
+# 注意：SRC_DIRS 若有增减，请同步此处，否则未收录文件会再次出现假报错。
+
+CompileFlags:
+  Add:
+    - -Isrc
+    - -Isrc/core
+    - -Isrc/dist
+    - -Isrc/learner
+    - -Isrc/learner/bayes
+    - -Isrc/learner/tree
+    - -Isrc/learner/linear
+    - -Isrc/learner/ensemble
+    - -Isrc/learner/meta
+    - -Isrc/eval
+    - -Isrc/filter
+    - -Isrc/io
+    - -Isrc/utils
+    - -Ithirdparty
+    - -Ithirdparty/alglib
+    - -Ithirdparty/lbfgs
+    - -Ithirdparty/OPUSMinerCR
+
+# -std=c++11 只对 C++ 源码追加；thirdparty/lbfgs/*.c 是 C 代码，
+# 带 -std=c++11 会触发 "invalid argument not allowed with 'C'"。
+---
+If:
+  PathMatch: .*\.(cpp|cc|cxx|h|hpp|hh)$
+CompileFlags:
+  Add:
+    - -std=c++11

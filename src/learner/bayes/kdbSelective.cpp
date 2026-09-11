@@ -456,9 +456,9 @@ void kdbSelective::finalisePass() {
           for (unsigned int k=0; k<=k_;k++) {
             printf("k = %d : ",k);
             for (std::vector<CategoricalAttribute>::const_iterator it = order_.begin(); it != order_.end(); it++){
-              printf("%.3f,", -foldLossFunctallK_[k][*it]);
+              printf(PETAL_FLOAT_FMT ",", -foldLossFunctallK_[k][*it]);
             }
-            printf("%.3f(class)\n", -foldLossFunctallK_[k][noCatAtts_]);
+            printf(PETAL_FLOAT_FMT "(class)\n", -foldLossFunctallK_[k][noCatAtts_]);
           }
         }
         else{
@@ -466,9 +466,9 @@ void kdbSelective::finalisePass() {
           for (unsigned int k=0; k<=k_;k++) {
             printf("k = %d : ",k);
             for (std::vector<CategoricalAttribute>::const_iterator it = order_.begin(); it != order_.end(); it++){
-              printf("%.3f,", foldLossFunctallK_[k][*it]);
+              printf(PETAL_FLOAT_FMT ",", foldLossFunctallK_[k][*it]);
             }
-            printf("%.3f(class)\n", foldLossFunctallK_[k][noCatAtts_]);
+            printf(PETAL_FLOAT_FMT "(class)\n", foldLossFunctallK_[k][noCatAtts_]);
           }
         }
       }
@@ -527,9 +527,9 @@ void kdbSelective::finalisePass() {
         else
           printf("RMSE: ");
         for (std::vector<CategoricalAttribute>::const_iterator it = order_.begin(); it != order_.end(); it++){
-          printf("%.3f,", foldLossFunct_[*it]);
+          printf(PETAL_FLOAT_FMT ",", foldLossFunct_[*it]);
         }
-        printf("%.3f(class)", foldLossFunct_[noCatAtts_]);
+        printf(PETAL_FLOAT_FMT "(class)", foldLossFunct_[noCatAtts_]);
       }
 
       if(verbosity>=3)
@@ -575,7 +575,7 @@ void kdbSelective::finalisePass() {
       if(selectiveK_ && !selectiveLinks_)
         printf("best k is: %d\n",bestKatt_[0]);
       if(selectiveLinks_){
-        printf("best k is: %.2f\n",sum(bestKatt_)/static_cast<double>(bestKatt_.size()));
+        printf("best k is: " PETAL_FLOAT_FMT "\n",sum(bestKatt_)/static_cast<double>(bestKatt_.size()));
         printf("Number of parents per attribute selected is: ");
         //print(bestKatt_);
         const char *sep = "";

@@ -233,23 +233,23 @@ void AdaBoost::sampleAndUpdateWeights(InstanceSample &sampleStream,
 					}
 					if (predicted_[count] == true) {
 						if (verbosity >= 3) {
-							printf("predicted true, weight before: %f\n",
+							printf("predicted true, weight before: " PETAL_FLOAT_FMT "\n",
 									weight_[count]);
 						}
 						weight_[count] /= (2 * (1 - epsilon));
 						if (verbosity >= 3) {
-							printf("predicted true, weight after: %f\n",
+							printf("predicted true, weight after: " PETAL_FLOAT_FMT "\n",
 									weight_[count]);
 						}
 
 					} else {
 						if (verbosity >= 3) {
-							printf("predicted false, weight before: %f\n",
+							printf("predicted false, weight before: " PETAL_FLOAT_FMT "\n",
 									weight_[count]);
 						}
 						weight_[count] /= (2 * epsilon);
 						if (verbosity >= 3) {
-							printf("predicted false, weight after: %f\n",
+							printf("predicted false, weight after: " PETAL_FLOAT_FMT "\n",
 									weight_[count]);
 						}
 					}
@@ -261,7 +261,7 @@ void AdaBoost::sampleAndUpdateWeights(InstanceSample &sampleStream,
 	}
 
 	if (verbosity >= 2) {
-		printf("The sum of weight for all instances: %f\n", sum(weight_));
+		printf("The sum of weight for all instances: " PETAL_FLOAT_FMT "\n", sum(weight_));
 	}
 	if (firstScan_ == true) {
 		dataSize_ = weight_.size();
@@ -365,13 +365,13 @@ void AdaBoost::train(InstanceStream &is) {
 
 		//assert(count==dataSize);
 		printf(
-				"For classifier %u, %u instances have been correctly classified, epsilon : %f.\n",
+				"For classifier %u, %u instances have been correctly classified, epsilon : " PETAL_FLOAT_FMT ".\n",
 				i, correctCount, epsilon);
 
 		if (epsilon == 0) {
 			Betas_.push_back(0.0000000001);
 			i++;
-			printf("epsilon %20.20f is too small.\n", epsilon);
+			printf("epsilon " PETAL_FLOAT_FMT " is too small.\n", epsilon);
 		} else if (fabs(epsilon-0.5)<0.0000001|| epsilon > 0.5) {
 			//this can set the weight to 1 again
 			firstScan_ = true;
@@ -384,12 +384,12 @@ void AdaBoost::train(InstanceStream &is) {
 				printf("Invalid count is greater than 10. exit. \n");
 				break;
 			}
-			printf("epsilon:%f\n", epsilon);
+			printf("epsilon:" PETAL_FLOAT_FMT "\n", epsilon);
 		} else {
 			// Determine the weight to assign to this model
 			Betas_.push_back((1 - epsilon) / epsilon);
 			i++;
-			printf("beta: %f,epsilon:%f\n", Betas_.back(), epsilon);
+			printf("beta: " PETAL_FLOAT_FMT ",epsilon:" PETAL_FLOAT_FMT "\n", Betas_.back(), epsilon);
 		}
 
 		if (verbosity >= 2) {

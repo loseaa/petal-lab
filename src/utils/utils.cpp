@@ -31,6 +31,7 @@
 
 #include <functional>
 #include "utils.h"
+#include "globals.h"
 #include "ALGLIB_specialfunctions.h"
 #include <stdio.h>
 #include <ctype.h>
@@ -234,7 +235,7 @@ void errorMsg(const char *fmt, ...)
 void print(const std::vector<double> &vals) {
   const char *sep = "";
   for (std::vector<double>::const_iterator it = vals.begin(); it != vals.end(); it++) {
-    printf("%s%0.4f", sep, *it);
+    printf("%s" PETAL_FLOAT_FMT, sep, *it);
     sep = ", ";
   }
 }
@@ -242,7 +243,7 @@ void print(const std::vector<double> &vals) {
 void print(const std::vector<float> &vals) {
   const char *sep = "";
   for (std::vector<float>::const_iterator it = vals.begin(); it != vals.end(); it++) {
-    printf("%s%0.4f", sep, *it);
+    printf("%s" PETAL_FLOAT_FMT, sep, *it);
     sep = ", ";
   }
 }
@@ -578,7 +579,7 @@ void calcAUPRC(
 
     auc += lastRecall * lastPrecision;
 
-    printf("\nArea under precision-recall curve %s: %f", metadata.getClassName(y), auc);
+    printf("\nArea under precision-recall curve %s: " PETAL_FLOAT_FMT, metadata.getClassName(y), auc);
   }
 
   putchar('\n');

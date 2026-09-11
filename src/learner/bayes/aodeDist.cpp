@@ -251,7 +251,7 @@ void aodeDist::classify(const instance &inst, std::vector<double> &classDist) {
 
 	if (verbosity >= 5) {
 		for (CatValue i = 0; i < noCatAtts_; i++) {
-			printf("%f\n", weight[i]);
+			printf(PETAL_FLOAT_FMT "\n", weight[i]);
 		}
 	}
 
@@ -423,7 +423,7 @@ void aodeDist::finalisePass() {
 
 	if (verbosity >= 4) {
 		for (CategoricalAttribute a = 0; a < noCatAtts_; a++) {
-			printf("%f\n", weight[a]);
+			printf(PETAL_FLOAT_FMT "\n", weight[a]);
 		}
 	}
 

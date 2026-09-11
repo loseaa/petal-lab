@@ -6,6 +6,7 @@
  */
 
 #include "extLearnVW.h"
+#include "globals.h"
 #include "correlationMeasures.h"
 #include "utils.h"
 #include <iostream>
@@ -237,9 +238,9 @@ void extLearnVW::calculateLossFunctions(unsigned int fold){
    
      double foldMCC = 0.0;
      foldMCC = calcMCC(foldxtab);
-     printf("\n0-1 loss (fold %d): %0.4f\n", fold, zeroOneLoss/static_cast<double>(foldcount));
-     printf("RMSE (fold %d): %0.4f\n", fold, sqrt(squaredError/foldcount));
-     printf("MCC (fold %d): %0.4f\n", fold, foldMCC);
+     printf("\n0-1 loss (fold %d): " PETAL_FLOAT_FMT "\n", fold, zeroOneLoss/static_cast<double>(foldcount));
+     printf("RMSE (fold %d): " PETAL_FLOAT_FMT "\n", fold, sqrt(squaredError/foldcount));
+     printf("MCC (fold %d): " PETAL_FLOAT_FMT "\n", fold, foldMCC);
      printf("--------------------------------------------\n");
     //foldrmsea.push_back(sqrt(squaredErrorAll/(foldcount* noClasses)));
     
@@ -262,13 +263,13 @@ void extLearnVW::printResults(InstanceStream *instanceStream, unsigned int exp){
   
     printf("Experiment %d:",exp+1);
     printf("\n0-1 loss:\n");
-    printf("%0.4f", mean(foldZOLoss));
+    printf(PETAL_FLOAT_FMT, mean(foldZOLoss));
     printf("\n+/-:");
-    printf("%0.4f", stddev(foldZOLoss));
+    printf(PETAL_FLOAT_FMT, stddev(foldZOLoss));
     printf("\nRMSE:\n");
-    printf("%0.4f", mean(foldrmse));
+    printf(PETAL_FLOAT_FMT, mean(foldrmse));
     printf("\n+/-:");
-    printf("%0.4f\n", stddev(foldrmse));
+    printf(PETAL_FLOAT_FMT "\n", stddev(foldrmse));
     printf("----------------------------------------------------------------");
 
 
@@ -285,7 +286,7 @@ void extLearnVW::printResults(InstanceStream *instanceStream, unsigned int exp){
     expMCC.push_back(MCC);
 
     printf("\nMCC:\n");
-    printf("%0.4f\n", MCC);
+    printf(PETAL_FLOAT_FMT "\n", MCC);
     
     // Print the confusion matrix
     // find the maximum value to determine how wide the output fields need to be
@@ -321,15 +322,15 @@ void extLearnVW::printResults(InstanceStream *instanceStream, unsigned int exp){
     
     if(exp == 9){ //Last one, print final average loss functions
         printf("\nMean 0-1 loss:\n");
-        printf("%0.4f", mean(expZOLoss));
+        printf(PETAL_FLOAT_FMT, mean(expZOLoss));
         printf("\n+/-:");
-        printf("%0.4f", stddev(expZOLoss));
+        printf(PETAL_FLOAT_FMT, stddev(expZOLoss));
         printf("\nMean RMSE:\n");
-        printf("%0.4f", mean(exprmse));
+        printf(PETAL_FLOAT_FMT, mean(exprmse));
         printf("\n+/-:");
-        printf("%0.4f", stddev(exprmse));
+        printf(PETAL_FLOAT_FMT, stddev(exprmse));
         printf("\nMean MCC:\n");
-        printf("%0.4f\n\n", mean(expMCC));
+        printf(PETAL_FLOAT_FMT "\n\n", mean(expMCC));
         
   
 #ifdef __linux__

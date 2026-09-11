@@ -32,7 +32,10 @@
 #include <stdlib.h>
 #include <math.h>
 #include <stdio.h>
+#include <string.h>
 #include <new>
+
+#include "resultsCollector.h"
 
 #include "instanceFile.h"
 #include "instanceStreamDiscretiser.h"
@@ -78,6 +81,14 @@ enum experimentType {
 };
 
 /**
+ * Parse the command line, build the requested experiment and run it.
+ *
+ * Besides the single-letter options handled in the switch below, two long
+ * options are accepted: @c --json=FILE writes the structured results gathered
+ * during the run (see resultsCollector.h), and @c --dump-predictions adds the
+ * per-instance predictions that ROC/PR curves need — off by default because it
+ * costs O(instances * classes).
+ *
  * @param argv Options for the experiment
  * @param argc Number of options
  * @return An integer 0 upon exit success
@@ -99,6 +110,7 @@ int main(int argc, char* const argv[]) {
   DataStatisticsActionArgs dsArgs;
   InstanceStream* instanceStream = NULL;
   InstanceStream* testStream = NULL;
+  const char* jsonOutFile = NULL;  ///< non-NULL once --json=<file> is seen
 
 #ifdef _MSC_VER
 #ifdef _DEBUG
@@ -118,7 +130,8 @@ int main(int argc, char* const argv[]) {
 
 		if (argc < 3) {
 			error("Usage: %s <metafile> <trainingfile> [-p<posClassName>]"
-					" [<test method args>] -l<learner> [<learner args>]",
+					" [<test method args>] -l<learner> [<learner args>]"
+					" [--json=<file>] [--dump-predictions]",
 					argv[0]);
 		}
 
@@ -256,6 +269,22 @@ int main(int argc, char* const argv[]) {
 			et=etEmpty;
 			++argv;
 			break;
+        case '-':
+          // Long options. The switch dispatches on one character, so these are
+          // handled here; p points just past the first '-', hence p + 1 is the
+          // text after "--".
+          if (strncmp(p + 1, "json=", 5) == 0) {
+            jsonOutFile = p + 6;  // the file name, just past "--json="
+          }
+          else if (streq(p + 1, "dump-predictions")) {
+            // Per-instance output is O(instances * classes), hence opt-in.
+            results().setPredictionsEnabled(true);
+          }
+          else {
+            error("Unrecognised argument '%s'", *argv);
+          }
+          ++argv;
+          break;
         default:
           error("-%c flag is not supported", *p);
         }
@@ -272,6 +301,12 @@ int main(int argc, char* const argv[]) {
     else {
       if (theLearners.empty() && et != etDataStats) {
         error("No learner specified");
+      }
+
+      // Record the data set name so the front-end can label a run, and so that
+      // several result files can be compared side by side later.
+      if (instanceStream != NULL) {
+        results().setDataset(instanceStream->getName());
       }
 
       // perform the experiment
@@ -328,6 +363,12 @@ int main(int argc, char* const argv[]) {
 
         if (verbosity >= 1)
           summariseUsage();
+
+        // Write while the streams are still alive: the collector may still read
+        // class names and counts off them.
+        if (jsonOutFile != NULL) {
+          results().write(jsonOutFile);
+        }
 
         if (instanceStream != NULL) delete instanceStream;
         if (testStream != NULL) delete testStream;

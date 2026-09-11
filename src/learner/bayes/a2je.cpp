@@ -186,7 +186,7 @@ void a2je::classify(const instance &inst, std::vector<double> &classDist) {
 			min=classDist[y];
 		if (verbosity >=4) {
 			//printf("%d,%d,%d,%f",x1,x2,y,mEstimate(x1x2yCount,classCount[y], noX1Vals*noX2Vals));
-			printf("count:y:%u, %f\n", y, classDist[y]);
+			printf("count:y:%u, " PETAL_FLOAT_FMT "\n", y, classDist[y]);
 			//printf("%u,%u,%f\n",x1x2yCount,classCount[y],log(mEstimate(x1x2yCount,classCount[y], noX1Vals*noX2Vals)));
 		}
 	}

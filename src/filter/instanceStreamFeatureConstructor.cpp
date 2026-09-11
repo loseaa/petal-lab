@@ -242,8 +242,8 @@ void InstanceStreamFeatureConstructor::setSource(InstanceStream &src) {
 
       printf("%s -> %s=%s", fstr.c_str(), src.getClassAttName(), src.getClassName(r.rhs-classesToItem));
 
-      printf(" [cov=%d,sup=%d,val=%f", r.cover, r.support, r.value);
-      printf(",p=%g]", r.p);
+      printf(" [cov=%d,sup=%d,val=" PETAL_FLOAT_FMT, r.cover, r.support, r.value);
+      printf(",p=" PETAL_FLOAT_FMT "]", r.p);
 
       putchar('\n');
     }

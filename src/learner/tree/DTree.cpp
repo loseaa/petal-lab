@@ -31,6 +31,7 @@
 #endif
 
 #include "DTree.h"
+#include "globals.h"
 #include "StoredInstanceStream.h"
 #include "StoredIndirectInstanceStream.h"
 #include "correlationMeasures.h"
@@ -505,11 +506,11 @@ void DTNumNode::print(const unsigned int depth, InstanceStream &source) const  {
     // just branch on unknown or cut_
     putchar('\n');
     for (unsigned int i = 0; i < depth; ++i) printf("| ");
-    printf("%s < %f", source.getNumAttName(att_), cut_);
+    printf("%s < " PETAL_FLOAT_FMT, source.getNumAttName(att_), cut_);
     branches_[0]->print(depth+1, source);
     putchar('\n');
     for (unsigned int i = 0; i < depth; ++i) printf("| ");
-    printf("%s >= %f", source.getNumAttName(att_), cut_);
+    printf("%s >= " PETAL_FLOAT_FMT, source.getNumAttName(att_), cut_);
     branches_[1]->print(depth+1, source);
     putchar('\n');
     for (unsigned int i = 0; i < depth; ++i) printf("| ");
@@ -545,7 +546,7 @@ void DTLeaf::print(const unsigned int, InstanceStream &source) const {
 
   for (CatValue y = 0; y < distribution_.size(); y++) {
     if (y) putchar(',');
-    printf("%.5f", distribution_[y]);
+    printf(PETAL_FLOAT_FMT, distribution_[y]);
 
     if (distribution_[y] > distribution_[best]) best = y;
   }

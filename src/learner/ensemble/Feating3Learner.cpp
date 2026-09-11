@@ -345,7 +345,7 @@ void Feating3Learner::train(InstanceStream &is) {
 							for (CategoricalAttribute a3 = 0; a3 < a2; ++a3) {
 								if (selected_[a1][a2][a3] == true) {
 
-									printf("%u,%u,%u,%f\n", a1, a2, a3,
+									printf("%u,%u,%u," PETAL_FLOAT_FMT "\n", a1, a2, a3,
 											tmi[a1][a2][a3]);
 								}
 							}

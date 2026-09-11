@@ -189,7 +189,7 @@ void nb::finalisePass() {
             if (verbosity >= 3) {
                 printf("The gain-ratio weights are:\n");
                 for (CategoricalAttribute a = 0; a < noCatAtts_; a++) {
-                    printf("%d:\t%f\n", a,wgt_[a]);
+                    printf("%d:\t" PETAL_FLOAT_FMT "\n", a,wgt_[a]);
                 }
             }
         }
@@ -231,7 +231,7 @@ void nb::finalisePass() {
             if (verbosity >= 3) {
                 printf("The kullback-leibler weights are:\n");
                 for (CategoricalAttribute a = 0; a < noCatAtts_; a++) {
-                    printf("%d:\t%f\n", a,wgt_[a]);
+                    printf("%d:\t" PETAL_FLOAT_FMT "\n", a,wgt_[a]);
                 }
             }
         }else if(weighting_ == WT_KL2D)
@@ -263,7 +263,7 @@ void nb::finalisePass() {
                     wgt2d_[a][value]=r_a_v*kld;
                     if(verbosity>=2)
                     {
-                        printf("a=%d,v=%d,kld=%f,rij=%f\n",a,value,kld,r_a_v);
+                        printf("a=%d,v=%d,kld=" PETAL_FLOAT_FMT ",rij=" PETAL_FLOAT_FMT "\n",a,value,kld,r_a_v);
 
                     }
                 }
@@ -302,7 +302,7 @@ void nb::finalisePass() {
 					if (verbosity >= 3) {
 						printf("The order of attributes ordered by the measure:\n");
 						for (CategoricalAttribute a = 0; a < noCatAtts_; a++) {
-							printf("%d:\t%f\t%u\n",  orderedAtts[a],measure[orderedAtts[a]],instanceStream_->getNoValues(orderedAtts[a]));
+							printf("%d:\t" PETAL_FLOAT_FMT "\t%u\n",  orderedAtts[a],measure[orderedAtts[a]],instanceStream_->getNoValues(orderedAtts[a]));
 						}
 					}
 				}

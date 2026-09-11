@@ -132,22 +132,22 @@ void dataStatisticsAction(InstanceStream &sourceInstanceStream, FilterSet &filte
   printf("# instances: %d\n", noInstances);
   printf("# attributes: %d\n", instanceStream->getNoNumAtts()+instanceStream->getNoCatAtts());
   printf("# categorical atts: %d\n", instanceStream->getNoCatAtts());
-  printf("average # attribute values: %.1f\n", noAttValues/static_cast<double>(instanceStream->getNoCatAtts()));
-  printf("average %% missing categorical values: %.1f\n", totalCatMissing?totalCatMissing/static_cast<double>(instanceStream->getNoCatAtts()*noInstances)*100:0.0);
+  printf("average # attribute values: " PETAL_FLOAT_FMT "\n", noAttValues/static_cast<double>(instanceStream->getNoCatAtts()));
+  printf("average %% missing categorical values: " PETAL_FLOAT_FMT "\n", totalCatMissing?totalCatMissing/static_cast<double>(instanceStream->getNoCatAtts()*noInstances)*100:0.0);
   printf("# numeric atts: %d\n", instanceStream->getNoNumAtts());
-  printf("average %% missing numeric values: %.1f\n", totalNumMissing?totalNumMissing/static_cast<double>(instanceStream->getNoNumAtts()*noInstances)*100:0.0);
+  printf("average %% missing numeric values: " PETAL_FLOAT_FMT "\n", totalNumMissing?totalNumMissing/static_cast<double>(instanceStream->getNoNumAtts()*noInstances)*100:0.0);
   if (args.numericRuns_) {
     for (NumericAttribute a = 0; a < instanceStream->getNoNumAtts(); a++) {
       NumValue v;
       const InstanceCount maxRun = getMaxRun(vals[a], v);
-      printf("longest run for %s: value=%f, count=%" ICFMT " (%.3f%%)\n", instanceStream->getNumAttName(a), v, maxRun, maxRun/static_cast<double>(noInstances));
+      printf("longest run for %s: value=" PETAL_FLOAT_FMT ", count=%" ICFMT " (" PETAL_FLOAT_FMT "%%)\n", instanceStream->getNumAttName(a), v, maxRun, maxRun/static_cast<double>(noInstances));
     }
   }
   printf("# classes: %d\n", instanceStream->getNoClasses());
   printf("class distribution:\n");
   const char *sep = "";
   for (std::vector<unsigned int>::const_iterator it = classCount.begin(); it != classCount.end(); it++) {
-    printf("%s%0.4f", sep, static_cast<double>(*it)/noInstances);
+    printf("%s" PETAL_FLOAT_FMT, sep, static_cast<double>(*it)/noInstances);
     sep = ", ";
   }
   putchar('\n');

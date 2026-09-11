@@ -601,7 +601,7 @@ void a2de2::classify(const instance &inst, std::vector<double> &classDist) {
 					}
 
 					if (verbosity == 4)
-						printf("%f,", spodeProbs[father][mother][y]);
+						printf(PETAL_FLOAT_FMT ",", spodeProbs[father][mother][y]);
 				}
 
 			}
@@ -728,7 +728,7 @@ void a2de2::classify(const instance &inst, std::vector<double> &classDist) {
 									if (verbosity == 5)
 
 									{
-										printf("%u,%u,%u,%u,%f\n",
+										printf("%u,%u,%u,%u," PETAL_FLOAT_FMT "\n",
 												order_[father], order_[mother],
 												order_[child], y, temp1);
 

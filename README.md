@@ -94,6 +94,8 @@ make -j8
 | `-n` | 数值归一化 |
 | `-f` | 基于 OPUS Miner 的特征构造 |
 | `-v<n>` | 详细级别，默认 1 |
+| `--json=<file>` | 把结构化结果（指标/学习曲线/混淆矩阵）写成 JSON，供可视化前端（如 lab/web）读取 |
+| `--dump-predictions` | 在上述 JSON 里附带逐样本预测概率，用于画 ROC/PR；默认关闭，因为体积是 O(样本数×类别数) |
 
 示例：
 
@@ -101,7 +103,25 @@ make -j8
 ./petal data.pm data.pd -x10 -laode
 ./petal data.pm data.pd -ttest.pd -lkdb
 ./petal data.pm data.pd -s -lnb
+
+# 产出结构化结果，再用 lab 的 Web UI（petal_lab serve）打开查看图表
+./petal data.pm data.pd -x10 -lnb --json=result.json --dump-predictions
 ```
+
+### 输出精度
+
+全系统统一：**所有对外输出的小数一律保留 4 位小数**（固定小数点，非有效数字）。
+
+- 唯一定义在 `src/core/globals.h` 的 `PETAL_FLOAT_FMT`（即 `"%.4f"`）。
+- C++ 侧所有 `printf` / `fprintf` / `sprintf` 的浮点转换以及 `--json` 产出的
+  JSON 数值都通过该宏写出，不在调用点手写精度。
+- 前端 `web/app.js` 的 `fmt()` 与 `lab/web` 的 `toFixed(4)` / `format: '.4f'`
+  与之对齐，保证页面读到的数与终端打印的数一致。
+
+改动位数只需改 `PETAL_FLOAT_FMT` 一处。
+
+> 例外：`src/learner/bayes/kdbCDdisc.cpp` 的 `toString(float)` 写的是供外部
+> 离散化器读取的临时文件，属于数据序列化而非结果展示，因此保留原有精度。
 
 ---
 
@@ -213,7 +233,9 @@ petalAI/
 │   ├── eval/           评估：交叉验证、训练测试、流式、学习曲线、bias-variance
 │   ├── filter/         实例流过滤器与离散化器（MDL / 等深）
 │   ├── io/             数据文件读写
-│   └── utils/          通用工具、随机数、相关性度量
+│   └── utils/          通用工具、随机数、相关性度量、JSON 输出与结果收集
+├── tools/              构建辅助脚本（生成 clangd 用的 compile_commands.json）
+├── web/                结果可视化页面（读取 --json 产出的文件，纯静态、可离线打开）
 └── thirdparty/
     ├── alglib/         ALGLIB 数值库
     ├── lbfgs/          L-BFGS 优化器（C）
@@ -228,8 +250,8 @@ petalAI/
 
 `xxyDist` / `xxxyDist` 等采用「扁平化 + 上三角对称压缩」存储：只保存
 `x1 > x2`（或 `x1 > x2 > x3`）的组合，可节省 1/2 至 23/24 的内存。
-源码中 `xxyDist.cpp` 与 `xxyDistEager.h` 仍保留着作者未完成的单块内存版本（`#if 0` 死代码），
-如需进一步优化可从这里入手。
+`xxyDistEager.h` 中还留着作者未完成的单块内存版本（`#if 0` 死代码，`offset1/offset2/countSize`），
+如需进一步优化可从这里入手；`xxyDist.cpp` 中同类代码已清理。
 
 ---
 

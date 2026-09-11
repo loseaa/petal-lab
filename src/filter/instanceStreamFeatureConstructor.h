@@ -19,6 +19,7 @@
 */
 #pragma once
 #include "filteredInstanceStream.h"
+#include "globals.h"
 #include "discretiser.h"
 #include <vector>
 #include <string>
@@ -123,19 +124,19 @@ public:
 
         if (it->upper == std::numeric_limits<NumValue>::max()) {
           s += getNumAttName(it->att);
-          sprintf(buf, ">%g", it->lower);
+          sprintf(buf, ">" PETAL_FLOAT_FMT, it->lower);
           s += buf;
         }
         else if (it->lower == -std::numeric_limits<NumValue>::max()) {
           s += getNumAttName(it->att);
-          sprintf(buf, "<=%g", it->upper);
+          sprintf(buf, "<=" PETAL_FLOAT_FMT, it->upper);
           s += buf;
         }
         else {
-          sprintf(buf, "%g<", it->lower);
+          sprintf(buf, PETAL_FLOAT_FMT "<", it->lower);
           s += buf;
           s += getNumAttName(it->att);
-          sprintf(buf, "<=%g", it->upper);
+          sprintf(buf, "<=" PETAL_FLOAT_FMT, it->upper);
           s += buf;
         }
       }

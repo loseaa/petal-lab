@@ -24,6 +24,7 @@
 #include "globals.h"
 #include "crosstab.h"
 #include "incrementalLearner.h"
+#include "resultsCollector.h"
 
 #include <assert.h>
 #include <vector>
@@ -31,6 +32,104 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+namespace {
+
+/**
+ * Status of the Matthews correlation coefficient for one (sample size, trial).
+ *
+ * MCC is only defined when both classes are represented in the test set. Two
+ * degenerate cases are distinguished because they print differently: a trial
+ * whose predictions all land in one class is reported as a bare `0`, and that
+ * is not the same thing as a coefficient that happens to round to 0.000000.
+ */
+enum MCCStatus {
+  MCC_UNDEFINED,   ///< a class has no test instances; print nothing
+  MCC_DEGENERATE,  ///< every prediction is one class; print `0`
+  MCC_OK
+};
+
+/// @param tp/fp/tn/fn confusion counts, with class 0 treated as "positive".
+MCCStatus mccStatus(double tp, double fp, double tn, double fn, double& value) {
+  if (tp + fn == 0 || tn + fp == 0) return MCC_UNDEFINED;   // no test instances for one class
+  if (tp + fp == 0 || tn + fn == 0) {                       // no predictions for one class
+    value = 0.0;
+    return MCC_DEGENERATE;
+  }
+  value = (tp * tn - fp * fn) / sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn));
+  return MCC_OK;
+}
+
+/**
+ * Print one matrix of per-trial values, indexed [sample size][trial].
+ *
+ * @param csv true for `1.0,2.0` per line, false for the MATLAB-style
+ *            `[a, b]; [c, d];` used by the default (non-CSV) output.
+ */
+void printTrials(FILE* f, const std::vector<std::vector<double> >& rows, bool csv) {
+  for (size_t j = 0; j < rows.size(); ++j) {
+    if (csv) {
+      for (size_t k = 0; k < rows[j].size(); ++k) {
+        if (k) fputc(',', f);
+        fprintf(f, PETAL_FLOAT_FMT, rows[j][k]);
+      }
+      fputc('\n', f);
+    }
+    else {
+      fputs(j ? "; [" : "[", f);
+      for (size_t k = 0; k < rows[j].size(); ++k) {
+        if (k) fputs(", ", f);
+        fprintf(f, PETAL_FLOAT_FMT, rows[j][k]);
+      }
+      fputc(']', f);
+    }
+  }
+  if (!csv) fputs("];\n", f);
+}
+
+/**
+ * Print the MCC matrix for one learner.
+ *
+ * The two formats disagree on undefined trials: CSV reserves a field for every
+ * trial (so an undefined one becomes an empty field), while the bracketed form
+ * leaves it out entirely. Both behaviours are preserved as-is.
+ *
+ * @tparam T InstanceCount for the count-based MCC, double for the proportional
+ *           (soft) variant; the formula is the same for both.
+ */
+template <typename T>
+void printMccTrials(FILE* f, const std::vector<std::vector<T> >& tp,
+                    const std::vector<std::vector<T> >& fp,
+                    const std::vector<std::vector<T> >& tn,
+                    const std::vector<std::vector<T> >& fn, bool csv) {
+  for (size_t j = 0; j < tp.size(); ++j) {
+    bool comma = false;  // non-CSV only: a value has already been printed
+    if (!csv) fputs(j ? "; [" : "[", f);
+
+    for (size_t k = 0; k < tp[j].size(); ++k) {
+      if (csv && k) fputc(',', f);
+
+      double value = 0.0;
+      const MCCStatus status = mccStatus(static_cast<double>(tp[j][k]),
+                                         static_cast<double>(fp[j][k]),
+                                         static_cast<double>(tn[j][k]),
+                                         static_cast<double>(fn[j][k]), value);
+      if (status == MCC_UNDEFINED) continue;
+
+      if (!csv) {
+        if (comma) fputs(", ", f);
+        else comma = true;
+      }
+      if (status == MCC_DEGENERATE) fputc('0', f);
+      else fprintf(f, PETAL_FLOAT_FMT, value);
+    }
+
+    if (csv) fputc('\n', f);
+    else fputc(']', f);
+  }
+  if (!csv) fputs("];\n", f);
+}
+
+}  // namespace
 
 // get settings from command line arguments
 void LearningCurveArgs::getArgs(char*const*& argv, char*const* end) {
@@ -71,7 +170,6 @@ void genLearningCurves(std::vector<learner*> theLearners, InstanceStream &instSt
   const InstanceCount testSetSize = args->testSetSize_;
   const unsigned int noOfTrials = args->noOfTrials_;
   const InstanceCount minSampleSize = args->startingPoint_;
-  std::vector<unsigned int*> vals;
   const unsigned int noClasses = instStream.getNoClasses();
   std::vector<InstanceCount> sampleSizes;
   InstanceCount step;
@@ -102,6 +200,7 @@ void genLearningCurves(std::vector<learner*> theLearners, InstanceStream &instSt
     for (InstanceCount sampleSize = minSampleSize; sampleSize <= availableForTraining; sampleSize *= 2) {
       if (args->csvFormat_) fprintf(csvf,",%d", sampleSize);
       else printf(" %d", sampleSize);
+      sampleSizes.push_back(sampleSize);
       ++noOfSampleSizes;
     }
   }
@@ -111,22 +210,28 @@ void genLearningCurves(std::vector<learner*> theLearners, InstanceStream &instSt
     for (InstanceCount sampleSize = minSampleSize; sampleSize <= availableForTraining; sampleSize += step) {
       if (args->csvFormat_) fprintf(csvf,",%d", sampleSize);
       else printf(" %d", sampleSize);
+      sampleSizes.push_back(sampleSize);
     }
   }
   if (!args->csvFormat_) puts("];");
 
-  /// the RMSE indexed by learner then sample size then trial
+  // Every measure is indexed [learner][sample size][trial], so that the same
+  // index triple picks one point out of any curve below.
+  //
+  // tp/fp/tn/fn are only meaningful for two-class problems: class 0 counts as
+  // "positive". The p-prefixed vectors are their "proportional" counterparts,
+  // accumulating predicted probabilities instead of hard decisions.
   std::vector<std::vector<std::vector<double> > > rmse(theLearners.size());
   std::vector<std::vector<std::vector<double> > > logLoss(theLearners.size());
-  std::vector<std::vector<std::vector<double> > > zoLoss(theLearners.size()); // true positives
-  std::vector<std::vector<std::vector<InstanceCount> > > tp(theLearners.size()); // true positives
-  std::vector<std::vector<std::vector<InstanceCount> > > fp(theLearners.size()); // false positive
-  std::vector<std::vector<std::vector<InstanceCount> > > tn(theLearners.size()); // true negatives
-  std::vector<std::vector<std::vector<InstanceCount> > > fn(theLearners.size()); // false egatives
-  std::vector<std::vector<std::vector<double> > > ptp(theLearners.size()); // proportonal true positives
-  std::vector<std::vector<std::vector<double> > > pfp(theLearners.size()); // proportonal false positive
-  std::vector<std::vector<std::vector<double> > > ptn(theLearners.size()); // proportonal true negatives
-  std::vector<std::vector<std::vector<double> > > pfn(theLearners.size()); // proportonal false egatives
+  std::vector<std::vector<std::vector<double> > > zoLoss(theLearners.size());      // 0-1 loss
+  std::vector<std::vector<std::vector<InstanceCount> > > tp(theLearners.size());   // true positives
+  std::vector<std::vector<std::vector<InstanceCount> > > fp(theLearners.size());   // false positives
+  std::vector<std::vector<std::vector<InstanceCount> > > tn(theLearners.size());   // true negatives
+  std::vector<std::vector<std::vector<InstanceCount> > > fn(theLearners.size());   // false negatives
+  std::vector<std::vector<std::vector<double> > > ptp(theLearners.size());         // proportional tp
+  std::vector<std::vector<std::vector<double> > > pfp(theLearners.size());         // proportional fp
+  std::vector<std::vector<std::vector<double> > > ptn(theLearners.size());         // proportional tn
+  std::vector<std::vector<std::vector<double> > > pfn(theLearners.size());         // proportional fn
 
   for (unsigned int learner = 0; learner < theLearners.size(); learner++) {
     theLearners[learner]->testCapabilities(instanceOrder); //after filters    
@@ -143,6 +248,9 @@ void genLearningCurves(std::vector<learner*> theLearners, InstanceStream &instSt
     logLoss[learner].resize(noOfSampleSizes);
   }
 
+  // One pass over the trials: each trial reshuffles the instance order and then
+  // walks up the sample sizes from that same order, so consecutive points of a
+  // curve are nested training sets rather than independent samples.
   for (unsigned int trial = 0; trial < noOfTrials; trial++) {
     int ssIndex = 0;
     instanceOrder.shuffle();
@@ -217,134 +325,68 @@ void genLearningCurves(std::vector<learner*> theLearners, InstanceStream &instSt
     }
   }
 
+  // Structured results for the web front-end: one record per
+  // (learner, sample size, trial), which is exactly what a learning curve plots.
+  results().setMode("learning-curves");
+  for (unsigned int learner = 0; learner < theLearners.size(); learner++) {
+    const std::string learnerName = *theLearners[learner]->getName();
+    for (unsigned int j = 0; j < noOfSampleSizes && j < sampleSizes.size(); j++) {
+      for (unsigned int k = 0; k < zoLoss[learner][j].size(); ++k) {
+        results().addCurvePoint(learnerName, static_cast<unsigned int>(sampleSizes[j]),
+                                k, zoLoss[learner][j][k],
+                                rmse[learner][j][k], logLoss[learner][j][k]);
+      }
+    }
+  }
+
   // output the learning curves
   if (args->csvFormat_) {
+    // CSV groups everything for one learner together, so that each block can be
+    // pasted straight into a spreadsheet.
     for (unsigned int learner = 0; learner < theLearners.size(); learner++) {
       fprintf(csvf, "\nLearner:,");
       print_(csvf, *theLearners[learner]->getName());
+
       fprintf(csvf,"\n\n=== Zero-One Loss ===\n");
-      for (unsigned int j = 0; j < noOfSampleSizes; j++) {
-        for (unsigned int k = 0; k < zoLoss[learner][j].size(); ++k) {
-          if (k) fputc(',',csvf);
-          fprintf(csvf, "%f", zoLoss[learner][j][k]);
-        }
-        fputc('\n', csvf);
-      }
+      printTrials(csvf, zoLoss[learner], true);
+
       fprintf(csvf, "\n=== RMSE ===\n");
-      for (unsigned int j = 0; j < noOfSampleSizes; j++) {
-        for (unsigned int k = 0; k < rmse[learner][j].size(); ++k) {
-          if (k) fputc(',',csvf);
-          fprintf(csvf, "%f", rmse[learner][j][k]);
-        }
-        fputc('\n', csvf);
-      }
+      printTrials(csvf, rmse[learner], true);
+
       fprintf(csvf, "\n=== Log Loss ===\n");
-      for (unsigned int j = 0; j < noOfSampleSizes; j++) {
-        for (unsigned int k = 0; k < logLoss[learner][j].size(); ++k) {
-          if (k) fputc(',', csvf);
-          fprintf(csvf, "%f", logLoss[learner][j][k]);
-        }
-        fputc('\n',csvf);
-      }
+      printTrials(csvf, logLoss[learner], true);
 
       if (store.getNoClasses() == 2) {
         fprintf(csvf, "\n=== Matthews Correlation Coefficient ===\n");
-        for (unsigned int j = 0; j < noOfSampleSizes; j++) {
-          for (unsigned int k = 0; k < tp[learner][j].size(); ++k) {
-            if (k) fputc(',', csvf);
-            if (tp[learner][j][k]+fn[learner][j][k]==0 || tn[learner][j][k]+fp[learner][j][k]==0) {
-                // no test instances for one class - do nothing
-            }
-            else if (tp[learner][j][k]+fp[learner][j][k]==0 || tn[learner][j][k]+fn[learner][j][k]==0) {
-                // no predictions for one class
-              fputc('0', csvf);
-            }
-            else {
-              fprintf(csvf, "%f", 
-                  (static_cast<double>(tp[learner][j][k])*tn[learner][j][k]-static_cast<double>(fp[learner][j][k])*fn[learner][j][k])
-                  / sqrt(static_cast<double>(tp[learner][j][k]+fp[learner][j][k])
-                  * static_cast<double>(tp[learner][j][k]+fn[learner][j][k])
-                  * static_cast<double>(tn[learner][j][k]+fp[learner][j][k])
-                  * static_cast<double>(tn[learner][j][k]+fn[learner][j][k]))
-                  );
-
-            }
-          }
-          fputc('\n', csvf);
-        }
+        printMccTrials(csvf, tp[learner], fp[learner], tn[learner], fn[learner], true);
 
         fprintf(csvf, "\n=== Proportional Matthews Correlation Coefficient ===\n");
-        for (unsigned int j = 0; j < noOfSampleSizes; j++) {
-          for (unsigned int k = 0; k < ptp[learner][j].size(); ++k) {
-            if (k) fputc(',', csvf);
-            if (ptp[learner][j][k]+pfn[learner][j][k]==0 || ptn[learner][j][k]+pfp[learner][j][k]==0) {
-                // no test instances for one class - do nothing
-            }
-            else if (ptp[learner][j][k]+pfp[learner][j][k]==0.0 || ptn[learner][j][k]+pfn[learner][j][k]==0.0) {
-              // no predictions for one class
-              fputc('0', csvf);
-            }
-            else {
-              fprintf(csvf, "%f", 
-                  (static_cast<double>(ptp[learner][j][k])*ptn[learner][j][k]-static_cast<double>(pfp[learner][j][k])*pfn[learner][j][k])
-                  / sqrt(static_cast<double>(ptp[learner][j][k]+pfp[learner][j][k])
-                  * static_cast<double>(ptp[learner][j][k]+pfn[learner][j][k])
-                  * static_cast<double>(ptn[learner][j][k]+pfp[learner][j][k])
-                  * static_cast<double>(ptn[learner][j][k]+pfn[learner][j][k]))
-                  );
-
-             }
-          }
-          fputc('\n', csvf);
-        }
+        printMccTrials(csvf, ptp[learner], pfp[learner], ptn[learner], pfn[learner], true);
       }
     }
   }
   else {
+    // The default format groups by measure, so the same curve for several
+    // learners can be read off one line.
     printf("=== Zero-One Loss ===\n");
     for (unsigned int learner = 0; learner < theLearners.size(); learner++) {
       print_(stdout, *theLearners[learner]->getName());
       printf(" = [");
-      for (unsigned int j = 0; j < noOfSampleSizes; j++) {
-        if (j) printf("; [");
-        else putchar('[');
-        for (unsigned int k = 0; k < zoLoss[learner][j].size(); ++k) {
-          if (k) printf(", ");
-          printf("%f", zoLoss[learner][j][k]);
-        }
-        putchar(']');
-      }
-      puts("];");
+      printTrials(stdout, zoLoss[learner], false);
     }
+
     printf("\n=== RMSE ===\n");
     for (unsigned int learner = 0; learner < theLearners.size(); learner++) {
       print_(stdout, *theLearners[learner]->getName());
       printf(" = [");
-      for (unsigned int j = 0; j < noOfSampleSizes; j++) {
-        if (j) printf("; [");
-        else putchar('[');
-        for (unsigned int k = 0; k < rmse[learner][j].size(); ++k) {
-          if (k) printf(", ");
-          printf("%f", rmse[learner][j][k]);
-        }
-        putchar(']');
-      }
-      puts("];");
+      printTrials(stdout, rmse[learner], false);
     }
+
     printf("\n=== Log Loss ===\n");
     for (unsigned int learner = 0; learner < theLearners.size(); learner++) {
       print_(stdout, *theLearners[learner]->getName());
       printf(" = [");
-      for (unsigned int j = 0; j < noOfSampleSizes; j++) {
-        if (j) printf("; [");
-        else putchar('[');
-        for (unsigned int k = 0; k < logLoss[learner][j].size(); ++k) {
-          if (k) printf(", ");
-          printf("%f", logLoss[learner][j][k]);
-        }
-        putchar(']');
-      }
-      puts("];");
+      printTrials(stdout, logLoss[learner], false);
     }
 
     if (store.getNoClasses() == 2) {
@@ -352,72 +394,14 @@ void genLearningCurves(std::vector<learner*> theLearners, InstanceStream &instSt
       for (unsigned int learner = 0; learner < theLearners.size(); learner++) {
         print_(stdout, *theLearners[learner]->getName());
         printf(" = [");
-        for (unsigned int j = 0; j < noOfSampleSizes; j++) {
-          bool comma = false; // true if a comma should be output before the next value
-          if (j) printf("; [");
-          else putchar('[');
-          for (unsigned int k = 0; k < tp[learner][j].size(); ++k) {
-            if (tp[learner][j][k]+fn[learner][j][k]==0 || tn[learner][j][k]+fp[learner][j][k]==0) {
-              // no test instances for one class - do nothing
-            }
-            else if (tp[learner][j][k]+fp[learner][j][k]==0 || tn[learner][j][k]+fn[learner][j][k]==0) {
-              // no predictions for one class
-              if (comma) printf(", ");
-              else comma = true;
-              putchar('0');
-            }
-            else {
-              if (comma) printf(", ");
-              else comma = true;
-              printf("%f", 
-                      (static_cast<double>(tp[learner][j][k])*tn[learner][j][k]-static_cast<double>(fp[learner][j][k])*fn[learner][j][k])
-                      / sqrt(static_cast<double>(tp[learner][j][k]+fp[learner][j][k])
-                              * static_cast<double>(tp[learner][j][k]+fn[learner][j][k])
-                              * static_cast<double>(tn[learner][j][k]+fp[learner][j][k])
-                              * static_cast<double>(tn[learner][j][k]+fn[learner][j][k]))
-                      );
-
-            }
-          }
-          putchar(']');
-        }
-        puts("];");
+        printMccTrials(stdout, tp[learner], fp[learner], tn[learner], fn[learner], false);
       }
 
       printf("\n=== Proportional Matthews Correlation Coefficient ===\n");
       for (unsigned int learner = 0; learner < theLearners.size(); learner++) {
         print_(stdout, *theLearners[learner]->getName());
         printf(" = [");
-        for (unsigned int j = 0; j < noOfSampleSizes; j++) {
-          bool comma = false; // true if a comma should be output before the next value
-          if (j) printf("; [");
-          else putchar('[');
-          for (unsigned int k = 0; k < ptp[learner][j].size(); ++k) {
-            if (ptp[learner][j][k]+pfn[learner][j][k]==0 || ptn[learner][j][k]+pfp[learner][j][k]==0) {
-              // no test instances for one class - do nothing
-            }
-            else if (ptp[learner][j][k]+pfp[learner][j][k]==0.0 || ptn[learner][j][k]+pfn[learner][j][k]==0.0) {
-              // no predictions for one class
-              if (comma) printf(", ");
-              else comma = true;
-              putchar('0');
-            }
-            else {
-              if (comma) printf(", ");
-              else comma = true;
-              printf("%f", 
-                      (static_cast<double>(ptp[learner][j][k])*ptn[learner][j][k]-static_cast<double>(pfp[learner][j][k])*pfn[learner][j][k])
-                      / sqrt(static_cast<double>(ptp[learner][j][k]+pfp[learner][j][k])
-                              * static_cast<double>(ptp[learner][j][k]+pfn[learner][j][k])
-                              * static_cast<double>(ptn[learner][j][k]+pfp[learner][j][k])
-                              * static_cast<double>(ptn[learner][j][k]+pfn[learner][j][k]))
-                      );
-
-            }
-          }
-          putchar(']');
-        }
-        puts("];");
+        printMccTrials(stdout, ptp[learner], pfp[learner], ptn[learner], pfn[learner], false);
       }
     }
     printf("<<< end learning curves <<<\n");

@@ -391,7 +391,7 @@ void a2de_ms::LOOCV(const instance &inst)
                                         xxyCount[parentIndex][y],xxxyDist_.getNoValues(childIndex));
                                 if(verbosity==3&&count==1&&y==0 &&fatherIndex==14 &&motherIndex==13)
                                 {
-                                    printf("child:%d: %f\n",child, spodeProbs[fatherIndex][motherIndex][y]);
+                                    printf("child:%d: " PETAL_FLOAT_FMT "\n",child, spodeProbs[fatherIndex][motherIndex][y]);
                                 }
                             }
                         }
@@ -648,7 +648,7 @@ void a2de_ms::finalisePass() {
 						if (verbosity >= 3) {
 							printf("The order of attributes by the measure:\n");
 							for (CategoricalAttribute a = 0; a < noCatAtts_; a++) {
-								printf("%d:\t%f\n", order_[a], measure[order_[a]]);
+								printf("%d:\t" PETAL_FLOAT_FMT "\n", order_[a], measure[order_[a]]);
 							}
 							printf("\n");
 						}
@@ -793,7 +793,7 @@ void a2de_ms::finalisePass() {
 								squaredError_[parent][child]
 										/ (xxxyDist_.xxyCounts.xyCounts.count-1));
 						if(verbosity>=3)
-							printf("%f,",squaredError_[parent][child]);
+							printf(PETAL_FLOAT_FMT ",",squaredError_[parent][child]);
 					}
 					if(verbosity>=3)
 						printf("\n");
@@ -1005,7 +1005,7 @@ void a2de_ms::classify(const instance &inst, std::vector<double> &classDist) {
                                             xxyCount[parentIndex][y],xxxyDist_.getNoValues(childIndex));
                                     if(verbosity==3&&count==1&&y==0 &&fatherIndex==14 &&motherIndex==13)
                                     {
-                                        printf("child:%d: %f\n",child, spodeProbs[fatherIndex][motherIndex][y]);
+                                        printf("child:%d: " PETAL_FLOAT_FMT "\n",child, spodeProbs[fatherIndex][motherIndex][y]);
                                     }
                                 }
                             }
@@ -1092,7 +1092,7 @@ over:   if(hasParent==false)
 					}
 
 					if (verbosity == 4)
-						printf("%f,", spodeProbs[father][mother][y]);
+						printf(PETAL_FLOAT_FMT ",", spodeProbs[father][mother][y]);
 				}
 
 			}
@@ -1223,7 +1223,7 @@ over:   if(hasParent==false)
 									spodeProbs[father][mother][y] *= temp;
 
 									if (verbosity == 3 && y == 0) {
-										printf("%u,%u,%u,%u,%f\n",
+										printf("%u,%u,%u,%u," PETAL_FLOAT_FMT "\n",
 												order_[father], order_[mother],
 												order_[child], y, temp);
 									}
@@ -1238,7 +1238,7 @@ over:   if(hasParent==false)
 									spodeProbs[father][child][y] *= temp;
 
 									if (verbosity == 3 && y == 0) {
-										printf("%u,%u,%u,%u,%f\n",
+										printf("%u,%u,%u,%u," PETAL_FLOAT_FMT "\n",
 												order_[father], order_[child],
 												order_[child], y, temp);
 									}
@@ -1252,7 +1252,7 @@ over:   if(hasParent==false)
 									spodeProbs[mother][child][y] *= temp;
 
 									if (verbosity == 3 && y == 0) {
-										printf("%u,%u,%u,%u,%f---\n",
+										printf("%u,%u,%u,%u," PETAL_FLOAT_FMT "---\n",
 												order_[mother], order_[child],
 												order_[child], y, temp);
 									}
@@ -1349,7 +1349,7 @@ over:   if(hasParent==false)
 
 							}
 							if (verbosity == 3&& y == 0) {
-								printf("%u,%u,%u,%u,%f\n", order_[father],
+								printf("%u,%u,%u,%u," PETAL_FLOAT_FMT "\n", order_[father],
 										order_[mother],
 										order_[child + noSelectedCatAtts_], y,
 										temp);

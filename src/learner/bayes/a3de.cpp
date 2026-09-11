@@ -398,13 +398,13 @@ void a3de::finalisePass() {
 												v1, x2, v2, y);
 
 								if (verbosity >= 4) {
-									printf("%d\t%" ICFMT "\n\t%" ICFMT "\n\t%f\n",
+									printf("%d\t%" ICFMT "\n\t%" ICFMT "\n\t" PETAL_FLOAT_FMT "\n",
 											y,
 											xxxxyDist_.xxxyCounts.xxyCounts.xyCounts.getClassCount(
 													y), dist.xyCounts.count,
 											xxxxyDist_.xxxyCounts.xxyCounts.xyCounts.p(
 													y));
-									printf("%d,%d,%d,%f\n", v1, v2, y, px1x2y);
+									printf("%d,%d,%d," PETAL_FLOAT_FMT "\n", v1, v2, y, px1x2y);
 								}
 
 								if (px1x2y) {
@@ -420,12 +420,12 @@ void a3de::finalisePass() {
 									m += n;
 									if (verbosity >= 4)
 										if (x1 == 2 && x2 == 0) {
-											printf("%e\t%e\t%f\n", px1x2y,
+											printf(PETAL_FLOAT_FMT "\t" PETAL_FLOAT_FMT "\t" PETAL_FLOAT_FMT "\n", px1x2y,
 													xxxxyDist_.xxxyCounts.xxyCounts.jointP(
 															x1, v1, x2, v2),
 													xxxxyDist_.xxxyCounts.xxyCounts.xyCounts.p(
 															y));
-											printf("%e\n", n);
+											printf(PETAL_FLOAT_FMT "\n", n);
 										}
 								}
 							}
@@ -643,7 +643,7 @@ void a3de::finalisePass() {
 						const char * sep = "";
 						printf("The order of attributes ordered by the measure:\n");
 						for (CategoricalAttribute a = 0; a < noCatAtts_; a++) {
-							printf("%d:\t%f\n", order_[a], measure[order_[a]]);
+							printf("%d:\t" PETAL_FLOAT_FMT "\n", order_[a], measure[order_[a]]);
 							sep = ", ";
 						}
 						printf("\n");
@@ -765,7 +765,7 @@ void a3de::finalisePass() {
 							squaredError_[parent][child]
 					/ xxxxyDist_.xxxyCounts.xxyCounts.xyCounts.count);
 					if(verbosity>=3)
-						printf("%f,",squaredError_[parent][child]);
+						printf(PETAL_FLOAT_FMT ",",squaredError_[parent][child]);
 				}
 				if(verbosity>=3)
 					printf("\n");
@@ -1494,7 +1494,7 @@ void a3de::a2deClassify(const instance &inst, std::vector<double> &classDist,
 							}
 							classDist[y] += p;
 							if (verbosity >= 3) {
-								printf("%f,", classDist[y]);
+								printf(PETAL_FLOAT_FMT ",", classDist[y]);
 							}
 						}
 						if (verbosity >= 3) {

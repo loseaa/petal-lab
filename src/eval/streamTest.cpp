@@ -38,8 +38,6 @@
 #include <float.h>
 #endif
 
-#define PRECISION "%0.5f"
-
 const bool selfContainedPlots = false;  // if true then plot files contain gnuplot commands.  If false then plotfiles just contain the data.
 
 void StreamTestArgs::getArgs(char*const*& argv, char*const* end) {
@@ -88,6 +86,13 @@ void StreamTestArgs::getArgs(char*const*& argv, char*const* end) {
 }
 
 
+/**
+ * Prequential ("test-then-train") evaluation of one incremental learner.
+ *
+ * Every instance is classified with the current model *before* being used to
+ * update it, so the running error reflects how the model performs on data it
+ * has never seen, and the whole stream is used for both testing and training.
+ */
 void doStreamTest(IncrementalLearner *learner, InstanceStream &sourceInstanceStream, FilterSet &filters, const StreamTestArgs &args) {
   InstanceStream* instanceStream = filters.apply(&sourceInstanceStream);
 
@@ -123,11 +128,6 @@ void doStreamTest(IncrementalLearner *learner, InstanceStream &sourceInstanceStr
   InstanceCount errors = 0;
   double squaredError = 0.0;
   InstanceCount lastErrors = 0;
-  //unsigned int zeroOneLoss = 0;
-  //double squaredErrorAll = 0.0;
-  //double logLoss = 0.0;
-  //std::vector<std::vector<float> > probs(instanceStream->getNoClasses()); //< the sequence of predicted probabilitys for each class
-  //std::vector<CatValue> trueClasses; //< the sequence of true classes
 
   if (args.plotfile_ == NULL) {
     printf("<<< BEGIN STREAM RESULTS <<<\n");
@@ -156,8 +156,9 @@ void doStreamTest(IncrementalLearner *learner, InstanceStream &sourceInstanceStr
         );
   }
 
-  // we use a dque rather than a queue here because C++ does not provide iterators for queues
-  // minor efficiency could be gained by implementing a queue whish supports an iterator
+  // Sliding window of the last smoothing_ errors; averaged to give the smoothed
+  // curve that stream plots need. A deque rather than a queue because we iterate
+  // over it to take the mean, and std::queue offers no iterators.
   std::deque<double> errorWindow;
 
   while (!instanceStream->isAtEnd()) {
@@ -179,31 +180,8 @@ void doStreamTest(IncrementalLearner *learner, InstanceStream &sourceInstanceStr
       squaredError += error * error;
       if (prediction != trueClass) errors++;
 
-
-#if 0 // not currently using these statistics
-      squaredErrorAll += error * error;
-      logLoss += log2(classDist[trueClass]);
-      for (CatValue y = 0; y < instanceStream->getNoClasses(); y++) {
-        if (args.plotfile_ == NULL) {
-          // output class distribution
-            printf("%f, ", classDist[y]);
-        }
-
-        // update squared error
-        if (y != trueClass) {
-          const double err = classDist[y];
-          squaredErrorAll += err * err;
-        }
-      }
-
-      if (args.calcAUPRC_) {
-        for (CatValue y = 0; y < instanceStream->getNoClasses(); y++) {
-          probs[y].push_back(classDist[y]);
-        }
-        trueClasses.push_back(trueClass);
-      }
-#endif
-
+      // Sampling: a point is emitted every freq_ instances, so that a long
+      // stream does not produce an unmanageable amount of output.
       if (args.freq_ <= 1 || count%args.freq_ == 0) {
         if (args.plotfile_ == NULL) {
           // output the true class
@@ -212,11 +190,11 @@ void doStreamTest(IncrementalLearner *learner, InstanceStream &sourceInstanceStr
         else {
           if (args.zoLoss_) {
             // output the error rate over the last interval
-            fprintf(args.plotfile_, "%d\t%f\n", count, (errors-lastErrors)/static_cast<double>(args.freq_));
+            fprintf(args.plotfile_, "%d\t" PETAL_FLOAT_FMT "\n", count, (errors-lastErrors)/static_cast<double>(args.freq_));
             lastErrors = errors;
           }
           else if (errorWindow.size() >= args.smoothing_) {
-            fprintf(args.plotfile_, "%d\t%f\n", count, mean(errorWindow));
+            fprintf(args.plotfile_, "%d\t" PETAL_FLOAT_FMT "\n", count, mean(errorWindow));
           }
         }
       }
@@ -243,41 +221,19 @@ void doStreamTest(IncrementalLearner *learner, InstanceStream &sourceInstanceStr
     printResults(xtab, *instanceStream);
 
     double MCC = calcMCC(xtab);
-    printf("\nMCC: " PRECISION "\n", MCC);
+    printf("\nMCC: " PETAL_FLOAT_FMT "\n", MCC);
   }
 
-#if 0
-  if (args.calcAUPRC_) {
-    calcAUPRC(probs, trueClasses, *instanceStream->getMetaData());
-    //calcAUPRC_COFFIN(probs, trueClasses, *instanceStream->getMetaData());
-    //out.erase(out.end()-1);
-    //lab.erase(lab.end()-1);
-    //printf("out=array([%s])\n",out.c_str());
-    //printf("lab=array([%s])\n",lab.c_str());
-  }
-#endif
-
-#if 0
-  printf("\n%" ICFMT " test cases\n0-1 loss = %0.6f\nRoot mean squared error = %0.3f\n"
-            "Root mean squared error all classes = %0.3f\nLogarithmic loss = %0.3f\n"
-            "Training time: %ld\n", 
-            count, zeroOneLoss/static_cast<double>(count), sqrt(squaredError/count), 
-            sqrt(squaredErrorAll/(count*instanceStream->getNoClasses())), -logLoss/count,
-            trainTime);
-#else
-  printf("0-1 loss: " PRECISION "\nRMSE: " PRECISION "\nTraining time: %ld\n", 
+  printf("0-1 loss: " PETAL_FLOAT_FMT "\nRMSE: " PETAL_FLOAT_FMT "\nTraining time: %ld\n",
             errors/static_cast<double>(count), sqrt(squaredError/count), trainTime);
-#endif
 }
 
 void streamTest(learner *theLearner, InstanceStream &sourceInstanceStream, FilterSet &filters, const StreamTestArgs &args) {
-	// Test that the learner is incremental
-  
-  IncrementalLearner* learner =
-			dynamic_cast<IncrementalLearner*>(theLearner);
+  // Prequential evaluation only makes sense for a learner that can be updated
+  // one instance at a time; a batch learner has nothing to update with.
+  IncrementalLearner* learner = dynamic_cast<IncrementalLearner*>(theLearner);
 
-	// if 'theLearner' is not incremental, generate an error
-	if (learner == NULL) {
+  if (learner == NULL) {
     error("streamTest requires an incremental learner");
   }
 

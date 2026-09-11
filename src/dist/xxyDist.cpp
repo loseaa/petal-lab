@@ -48,28 +48,9 @@ void xxyDist::reset(InstanceStream& stream) {
 
 	xyCounts.reset(&stream);
 
-#if 0
-	offset1.resize(stream.getNoCatAtts());
-	offset2.resize(stream.getNoCatAtts());
-
-	int next = 0;
-
-	for (CategoricalAttribute a = 0; a < stream.getNoCatAtts(); a++) {
-		offset1[a] = next;
-		next += stream.getNoValues(a) * stream.getNoClasses();
-	}
-
-	next = 0;
-
-	for (CategoricalAttribute a = 0; a < stream.getNoCatAtts(); a++) {
-		offset2[a] = next;
-		next += stream.getNoValues(a) * offset1[a];
-	}
-
-	countSize = next;
-	count.assign(next, 0);
-#endif
-
+	// Upper-triangular layout: count_[x1][v1 * x1 + x2] holds the counts for
+	// the pair (x1, x2) with x1 > x2, i.e. only one of the two symmetric
+	// orderings is stored. Halves the memory a full matrix would need.
 	count_.resize(stream.getNoCatAtts());
 
 	for (CategoricalAttribute x1 = 1; x1 < stream.getNoCatAtts(); x1++) {

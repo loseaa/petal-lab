@@ -256,7 +256,7 @@ void cbn::finalisePass() {
         totalK += parents_[a].size();
       }
 
-      printf("Average k: %0.2f\n\n", static_cast<double>(totalK)/ noCatAtts_);
+      printf("Average k: " PETAL_FLOAT_FMT "\n\n", static_cast<double>(totalK)/ noCatAtts_);
     }
   }
 

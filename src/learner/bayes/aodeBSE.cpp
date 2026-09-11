@@ -167,7 +167,7 @@ void aodeBSE::finalisePass() {
 		minError_[pass_-2]=squaredErrorAode_;
 		if(verbosity>=2)
 		{
-			printf("error 0: %f.\n",squaredErrorAode_);
+			printf("error 0: " PETAL_FLOAT_FMT ".\n",squaredErrorAode_);
 		}
 	}else if(pass_>2)
 	{
@@ -257,7 +257,7 @@ void aodeBSE::finalisePass() {
 					{
 							print(squaredErrorChild_);
 							printf("\n%u is removed as a child.\n",minimalChild);
-							printf("Min val is %f.\n",minSquaredErrorChild);
+							printf("Min val is " PETAL_FLOAT_FMT ".\n",minSquaredErrorChild);
 					}
 					squaredErrorChild_.assign(noCatAtts_,0.0);
 					squaredErrorParent_.assign(noCatAtts_,0.0);
@@ -281,7 +281,7 @@ void aodeBSE::finalisePass() {
 					{
 							print(squaredErrorParent_);
 							printf("\n%u is removed as a parent.\n",minimalParent);
-							printf("Min val is %f.\n",minSquaredErrorParent);
+							printf("Min val is " PETAL_FLOAT_FMT ".\n",minSquaredErrorParent);
 					}
 					squaredErrorChild_.assign(noCatAtts_,0.0);
 					squaredErrorParent_.assign(noCatAtts_,0.0);
@@ -313,7 +313,7 @@ void aodeBSE::finalisePass() {
 					{
 						print(squaredErrorParentChild_);
 						printf("\n%u is removed as parent and child.\n",minimalParentChild);
-						printf("Min val is %f.\n",minSquaredErrorParentChild);
+						printf("Min val is " PETAL_FLOAT_FMT ".\n",minSquaredErrorParentChild);
 					}
 					squaredErrorChild_.assign(noCatAtts_,0.0);
 					squaredErrorParent_.assign(noCatAtts_,0.0);
@@ -340,7 +340,7 @@ void aodeBSE::finalisePass() {
 
 				if(verbosity>=2)
 				{
-						printf("%u is removed as a child, rmse is %f.\n",
+						printf("%u is removed as a child, rmse is " PETAL_FLOAT_FMT ".\n",
 								minimalChild,squaredErrorChild_[minimalChild]);
 				}
 				squaredErrorChild_.assign(noCatAtts_,0.0);
@@ -363,7 +363,7 @@ void aodeBSE::finalisePass() {
 				noActiveParent_--;
 				if(verbosity>=2)
 				{
-						printf("%u is removed as a parent, rmse is %f.\n",
+						printf("%u is removed as a parent, rmse is " PETAL_FLOAT_FMT ".\n",
 								minimalParent,squaredErrorParent_[minimalParent]);
 				}
 
@@ -385,7 +385,7 @@ void aodeBSE::finalisePass() {
 				noActivePC_--;
 				if(verbosity>=2)
 				{
-						printf("%u is removed as a parent and child, rmse is %f.\n",
+						printf("%u is removed as a parent and child, rmse is " PETAL_FLOAT_FMT ".\n",
 								minimalParentChild,squaredErrorParentChild_[minimalParentChild]);
 				}
 
@@ -603,7 +603,7 @@ void aodeBSE::LOOCV(const instance &inst)
 
 								if(verbosity>=2&&pass_==7&&count_==1&&child==2)
 								{
-									printf("3->parent:%u,y:%u,\n%f,\n%f,\n%f\n",parent,y,spodeProbs[parent][y],mEstimate(x1x2yCount,xyCount[parent][y], noChildVals),model[parent][child][y]);
+									printf("3->parent:%u,y:%u,\n" PETAL_FLOAT_FMT ",\n" PETAL_FLOAT_FMT ",\n" PETAL_FLOAT_FMT "\n",parent,y,spodeProbs[parent][y],mEstimate(x1x2yCount,xyCount[parent][y], noChildVals),model[parent][child][y]);
 
 								}
 							}
@@ -639,7 +639,7 @@ void aodeBSE::LOOCV(const instance &inst)
 
 							if(verbosity>=2&&pass_==7&&count_==1&&att==2)
 							{
-								printf("2->att:%u,parent: %u,y:%u,%f\n",att,parent,y,model[parent][att][y]);
+								printf("2->att:%u,parent: %u,y:%u," PETAL_FLOAT_FMT "\n",att,parent,y,model[parent][att][y]);
 							}
 						}
 					}
@@ -650,7 +650,7 @@ void aodeBSE::LOOCV(const instance &inst)
 
 
 				if( verbosity>=2&&pass_==7&& count_<20)
-					printf("1->pass: %u, count: %u, att: %u, %f\n",pass_,count_,att, error);
+					printf("1->pass: %u, count: %u, att: %u, " PETAL_FLOAT_FMT "\n",pass_,count_,att, error);
 				squaredErrorChild_[att] += error * error;
 
 				if(trueClass==indexOfMaxVal(classDist))
@@ -865,7 +865,7 @@ void aodeBSE::classify(const instance &inst, std::vector<double> &classDist) {
 							* scaleFactor;
 				if (verbosity >= 5&&parent==1) {
 
-					printf("%u,%u,%f\n", parent, y,
+					printf("%u,%u," PETAL_FLOAT_FMT "\n", parent, y,
 							spodeProbs[parent][y]);
 				}
 				}
@@ -974,7 +974,7 @@ void aodeBSE::classify(const instance &inst, std::vector<double> &classDist) {
 			for (CatValue y = 0; y < noClasses_; y++) {
 				classDist[y] += spodeProbs[parent][y];
 				if(count_==1)
-				printf("%f,",spodeProbs[parent][y]);
+				printf(PETAL_FLOAT_FMT ",",spodeProbs[parent][y]);
 			}
 			if(count_==1)
 				printf("\n");

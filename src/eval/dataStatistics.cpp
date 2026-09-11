@@ -36,6 +36,7 @@
 #include <stdio.h>
 
 #include "utils.h"
+#include "globals.h"
 #include "dataStatistics.h"
 #include "learnerRegistry.h"
 
@@ -157,13 +158,13 @@ void dataStatistics::finalisePass() {
         printf("# instances: %d\n", noInstances_);
         printf("# attributes: %d\n", noNumAtts_+noCatAtts_);
           printf("\t# categorical atts: %d\n", noCatAtts_);
-            printf("\taverage attribute values: %.2f\n", avNoAttValues_/noCatAtts_);
+            printf("\taverage attribute values: " PETAL_FLOAT_FMT "\n", avNoAttValues_/noCatAtts_);
           printf("\t# Numerical atts: %d\n", noNumAtts_);
         printf("# classes: %d\n", noClasses_);
         printf("class distribution:\n");
         const char *sep = "";
           for (std::vector<unsigned int>::const_iterator it = classCount.begin(); it != classCount.end(); it++) {
-            printf("%s%0.4f", sep, static_cast<double>(*it)/noInstances_);
+            printf("%s" PETAL_FLOAT_FMT, sep, static_cast<double>(*it)/noInstances_);
             sep = ", ";
           }
         putchar('\n');

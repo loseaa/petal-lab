@@ -20,6 +20,7 @@
  */
 
 #include "lr.h"
+#include "globals.h"
 #include "learnerRegistry.h"
 
 static LearnerRegistrar registrar("lr", constructor<lr>);
@@ -44,7 +45,7 @@ int lr::progress(
 		int ls
 )
 {
-	printf("%f, ", fx);
+	printf(PETAL_FLOAT_FMT ", ", fx);
 	//	printf("Iteration %d:\n", k);
 	//	printf("  fx = %f, Parameter value is: \n", fx);
 	//	for (int i = 0; i < n; i++) {
@@ -335,21 +336,21 @@ void lr::getCapabilities(capabilities &c) {
 
 void lr::printRegressor() {
 	for (int i = 0; i < nc; i++) {
-		printf("%f, ", regressor[i]);
+		printf(PETAL_FLOAT_FMT ", ", regressor[i]);
 	}
 	printf("\n");
 }
 
 void lr::printx() {
 	for (int i = 0; i < np; i++) {
-		printf("%f, ", x[i]);
+		printf(PETAL_FLOAT_FMT ", ", x[i]);
 	}
 	printf("\n");
 }
 
 void lr::printg(lbfgsfloatval_t *g) {
 	for (int i = 0; i < np; i++) {
-		printf("%f, ", g[i]);
+		printf(PETAL_FLOAT_FMT ", ", g[i]);
 	}
 	printf("\n");
 }

@@ -12,6 +12,12 @@ build/
 *.so
 *.dylib
 
+# clangd 编译数据库（由 make compile_commands 生成，含本机绝对路径）
+compile_commands.json
+
+# clangd 索引缓存（IDE 自动生成的二进制索引，随机器与时间变化）
+.cache/
+
 # 可执行文件
 petal
 *.exe
@@ -32,3 +38,20 @@ petal
 # 系统文件
 .DS_Store
 Thumbs.db
+
+# ---------------------------------------------------------------------------
+# 数据集与实验结果（体积大，且因人而异，不入库）
+# data/uci 是指向实验室数据集目录的软链接，约 700 MB。
+# ---------------------------------------------------------------------------
+data/
+
+# petal-lab 的本地数据库与前端构建产物
+lab/petal.db
+lab/petal.db-wal
+lab/petal.db-shm
+lab/web/dist/
+lab/web/node_modules/
+
+# Python 缓存
+__pycache__/
+*.pyc

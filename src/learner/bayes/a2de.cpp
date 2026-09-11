@@ -506,12 +506,12 @@ void a2de::finalisePass() {
 
 									if (verbosity >= 4) {
 										printf(
-												"%d\t%" ICFMT "\n\t%" ICFMT "\n\t%f\n",
+												"%d\t%" ICFMT "\n\t%" ICFMT "\n\t" PETAL_FLOAT_FMT "\n",
 												y,
 												xxxyDist_.xxyCounts.xyCounts.getClassCount(
 														y), dist.xyCounts.count,
 												xxxyDist_.xxyCounts.xyCounts.p(y));
-										printf("%d,%d,%d,%f\n", v1, v2, y, px1x2y);
+										printf("%d,%d,%d," PETAL_FLOAT_FMT "\n", v1, v2, y, px1x2y);
 									}
 
 									if (px1x2y) {
@@ -529,12 +529,12 @@ void a2de::finalisePass() {
 										m += n;
 										if (verbosity >= 4)
 											if (x1 == 2 && x2 == 0) {
-												printf("%e\t%e\t%f\n", px1x2y,
+												printf(PETAL_FLOAT_FMT "\t" PETAL_FLOAT_FMT "\t" PETAL_FLOAT_FMT "\n", px1x2y,
 														xxxyDist_.xxyCounts.jointP(
 																x1, v1, x2, v2),
 														xxxyDist_.xxyCounts.xyCounts.p(
 																y));
-												printf("%e\n", n);
+												printf(PETAL_FLOAT_FMT "\n", n);
 											}
 									}
 								}
@@ -821,7 +821,7 @@ void a2de::finalisePass() {
                                 squaredError_[parent][child]
                                         / xxxyDist_.xxyCounts.xyCounts.count);
                         if(verbosity>=3)
-                            printf("%f,",squaredError_[parent][child]);
+                            printf(PETAL_FLOAT_FMT ",",squaredError_[parent][child]);
                     }
                     if(verbosity>=3)
                         printf("\n");
@@ -1227,7 +1227,7 @@ void a2de::LOOCV(const instance &inst)
 					if(verbosity>=3)
 					{
 						if(count==26&&parentIndex==16&&y==trueClass)
-							printf("spodeProb:%f\n",spodeProbs[fatherIndex][motherIndex][y]);
+							printf("spodeProb:" PETAL_FLOAT_FMT "\n",spodeProbs[fatherIndex][motherIndex][y]);
 
 					}
 
@@ -1291,7 +1291,7 @@ void a2de::LOOCV(const instance &inst)
                                 if(verbosity>=3)
                                 {
                                     if(count==26&&parentIndex==16&&y==trueClass)
-                                        printf("f:%d,m:%d,child:%d, prob:%f\n",fatherIndex,motherIndex,childIndex,mEstimate(parentChildYCount,
+                                        printf("f:%d,m:%d,child:%d, prob:" PETAL_FLOAT_FMT "\n",fatherIndex,motherIndex,childIndex,mEstimate(parentChildYCount,
                                                 xxyCount[parentIndex][y],xxxyDist_.getNoValues(child)));
 
                                 }
@@ -1314,7 +1314,7 @@ void a2de::LOOCV(const instance &inst)
                                 {
                                     if(count==26&&parentIndex<16&&childIndex==7&&y==trueClass)
                                     {
-                                        printf(">>%f\n",spodeProbs[fatherIndex][motherIndex][y]);
+                                        printf(">>" PETAL_FLOAT_FMT "\n",spodeProbs[fatherIndex][motherIndex][y]);
 
                                     }
                                 }
@@ -1334,7 +1334,7 @@ void a2de::LOOCV(const instance &inst)
                         if(verbosity>=3)
                         {
                             if(parentIndex==0&&childIndex==0)
-                                printf("count: %d,parent,%d, child %d,error:%f\n",count,parentIndex,childIndex,error);
+                                printf("count: %d,parent,%d, child %d,error:" PETAL_FLOAT_FMT "\n",count,parentIndex,childIndex,error);
                         }
 
                         const double previousMean=meanOfModels_[parentIndex*noCatAtts_+childIndex];
@@ -1386,7 +1386,7 @@ void a2de::LOOCV(const instance &inst)
                         k=1/(b*b/(n1-1)+(1-b)*(1-b)/(n2-1));
                         double st=alglib::studenttdistribution(k,(x1-x2)/sqrt(u1+u2));
                         if(verbosity>=3)
-                            printf("the probability that model %d is less than model %d: %f.\n",i,j,st);
+                            printf("the probability that model %d is less than model %d: " PETAL_FLOAT_FMT ".\n",i,j,st);
                         if(st<delta_)
                         {
                             modelThrownOut_[j]=true;
@@ -1778,7 +1778,7 @@ over:   if(hasParent==false)
 					}
 
 					if (verbosity == 4)
-						printf("%f,", spodeProbs[father][mother][y]);
+						printf(PETAL_FLOAT_FMT ",", spodeProbs[father][mother][y]);
 				}
 
 			}
@@ -1967,7 +1967,7 @@ over:   if(hasParent==false)
 										}
 										if (verbosity == 3 && count == check
 												&& y == 0) {
-											printf("%u,%u,%u,%u,%f\n", father,
+											printf("%u,%u,%u,%u," PETAL_FLOAT_FMT "\n", father,
 													mother, child, y, temp1);
 										}
 
@@ -2000,7 +2000,7 @@ over:   if(hasParent==false)
 
 										if (verbosity == 3 && count == check
 												&& y == 0) {
-											printf("%u,%u,%u,%u,%f\n", father,
+											printf("%u,%u,%u,%u," PETAL_FLOAT_FMT "\n", father,
 													child, mother, y, temp2);
 										}
 
@@ -2032,7 +2032,7 @@ over:   if(hasParent==false)
 										}
 										if (verbosity == 3 && count == check
 												&& y == 0) {
-											printf("%u,%u,%u,%u,%f\n", mother,
+											printf("%u,%u,%u,%u," PETAL_FLOAT_FMT "\n", mother,
 													child, father, y, temp3);
 										}
 
@@ -2087,7 +2087,7 @@ over:   if(hasParent==false)
 			printf("the class dist of instance %u before normalizing:\n",
 					count);
 			for (unsigned int i = 0; i < classDist.size(); i++)
-				printf("%0.20f,", classDist[i]);
+				printf(PETAL_FLOAT_FMT ",", classDist[i]);
 			printf("\n");
 		}
 	}
@@ -2099,7 +2099,7 @@ over:   if(hasParent==false)
 		if (count == check) {
 			printf("the class dist of instance %u:\n", count);
 			for (unsigned int i = 0; i < classDist.size(); i++)
-				printf("%0.14f,", classDist[i]);
+				printf(PETAL_FLOAT_FMT ",", classDist[i]);
 			printf("\n");
 		}
 	}

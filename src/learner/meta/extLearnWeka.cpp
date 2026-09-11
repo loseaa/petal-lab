@@ -6,6 +6,7 @@
  */
 
 #include "extLearnWeka.h"
+#include "globals.h"
 #include "correlationMeasures.h"
 #include "utils.h"
 #include <iostream>
@@ -233,16 +234,16 @@ void extLearnWeka::printResults(InstanceStream *instanceStream, unsigned int exp
   #endif
 
           for(int i=0;i<10;i++)
-        	  printf("%f\n",foldrmse[i]);
+        	  printf(PETAL_FLOAT_FMT "\n",foldrmse[i]);
 
           printf("\n0-1 loss:\n");
-          printf("%0.4f", mean(foldZOLoss));
+          printf(PETAL_FLOAT_FMT, mean(foldZOLoss));
           printf("\n+/-:");
-          printf("%0.4f", stddev(foldZOLoss));
+          printf(PETAL_FLOAT_FMT, stddev(foldZOLoss));
           printf("\nRMSE:\n");
-          printf("%0.4f", mean(foldrmse));
+          printf(PETAL_FLOAT_FMT, mean(foldrmse));
           printf("\n+/-:");
-          printf("%0.4f", stddev(foldrmse));
+          printf(PETAL_FLOAT_FMT, stddev(foldrmse));
           
           
 //          for (CatValue predicted = 0; predicted < instanceStream->getNoClasses(); predicted++) {
@@ -256,7 +257,7 @@ void extLearnWeka::printResults(InstanceStream *instanceStream, unsigned int exp
         MCC = calcMCC(xtab);
         
         printf("\nMCC:\n");
-        printf("%0.4f\n", MCC);
+        printf(PETAL_FLOAT_FMT "\n", MCC);
           
        
         // Print the confusion matrix
