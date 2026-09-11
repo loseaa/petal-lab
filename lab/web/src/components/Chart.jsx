@@ -1,5 +1,5 @@
-import { useMemo, useRef, useState } from 'react';
-import { VegaLite } from 'react-vega';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import embed from 'vega-embed';
 
 /**
  * Chart card with export.
@@ -8,6 +8,13 @@ import { VegaLite } from 'react-vega';
  *  - SVG: vector, scales without loss, converts cleanly to PDF — the safe
  *    choice for a paper.
  *  - PNG: rendered at scale 4, roughly 300 dpi at typical figure widths.
+ *
+ * Rendering uses the imperative vega-embed API (not the declarative
+ * <VegaLite>) so we can finalize the view in the effect cleanup. The
+ * declarative component tears its container down mid-async-render when the
+ * card unmounts quickly (e.g. switching between runs), which made vega-embed
+ * measure a null element and throw "getBoundingClientRect of null", taking
+ * the whole page down to a blank screen.
  */
 function download(blob, filename) {
   const url = URL.createObjectURL(blob);
@@ -19,25 +26,25 @@ function download(blob, filename) {
 }
 
 export default function Chart({ title, description, spec, data }) {
+  const containerRef = useRef(null);
   const viewRef = useRef(null);
   const [ready, setReady] = useState(false);
 
   // Specs are built inline at the call site (spec={boxPlotSpec()}), so every
-  // render hands react-vega a brand-new object. It treats that as a changed
-  // spec and rebuilds the chart, tearing down the previous render midway —
-  // which shows up as a blank card or NaN coordinates. Keying off the serialised
-  // spec keeps the reference stable whenever the content is unchanged.
+  // render hands us a brand-new object. Keying off the serialised spec keeps
+  // the reference stable whenever the content is unchanged, so vega doesn't
+  // rebuild on every render.
   const specJson = JSON.stringify(spec);
   const stableSpec = useMemo(() => JSON.parse(specJson), [specJson]);
 
   // Inline the data into the spec instead of using react-vega's `data` prop:
   // that prop is interpreted as a *named dataset map*, so passing {values: [...]}
-  // leaves Vega with no bound data and it renders nothing (no error either).
-  // Specs that carry their own `datasets` (the CD diagram) are left alone.
+  // leaves Vega with no bound data and it renders nothing. Specs that carry
+  // their own `datasets` (the CD diagram) are left alone.
   const finalSpec = useMemo(() => {
     const withData = stableSpec.datasets || !data ? stableSpec : { ...stableSpec, data };
-    // Without an explicit width Vega-Lite falls back to 200px, leaving the
-    // chart squeezed into a narrow strip regardless of the card size.
+    // Without an explicit width Vega-Lite falls back to 200px, squeezing the
+    // chart into a narrow strip regardless of the card size.
     return {
       ...withData,
       width: 'container',
@@ -53,6 +60,31 @@ export default function Chart({ title, description, spec, data }) {
     const vals = data.values;
     return Array.isArray(vals) ? vals.length > 0 : Boolean(vals);
   }, [spec, data]);
+
+  useEffect(() => {
+    if (!hasData || !containerRef.current) return undefined;
+    let cancelled = false;
+    setReady(false);
+    embed(containerRef.current, finalSpec, { renderer: 'svg', actions: false })
+      .then((result) => {
+        if (cancelled) {
+          result.view.finalize();
+          return;
+        }
+        viewRef.current = result.view;
+        setReady(true);
+      })
+      .catch(() => {});
+    return () => {
+      // Finalize the view on unmount or before re-embedding with new data so
+      // vega never touches a detached DOM node.
+      cancelled = true;
+      if (viewRef.current) {
+        viewRef.current.finalize();
+        viewRef.current = null;
+      }
+    };
+  }, [hasData, finalSpec]);
 
   const filename = (title || 'figure').replace(/[^\w一-龥-]+/g, '_');
 
@@ -95,16 +127,7 @@ export default function Chart({ title, description, spec, data }) {
       {description && <p className="sub">{description}</p>}
 
       {hasData ? (
-        <VegaLite
-          spec={finalSpec}
-          renderer="svg"
-          actions={false}
-          style={{ width: '100%' }}
-          onNewView={(view) => {
-            viewRef.current = view;
-            setReady(true);
-          }}
-        />
+        <div ref={containerRef} style={{ width: '100%' }} />
       ) : (
         <div className="empty" style={{ padding: 26 }}>暂无数据</div>
       )}

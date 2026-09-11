@@ -5,15 +5,6 @@ import BatchesView from './views/BatchesView.jsx';
 import RunExperiment from './views/RunExperiment.jsx';
 import { api } from './api.js';
 
-/**
- * Two different things are being managed, so the navigation keeps them apart:
- *
- *   单次运行 (Runs)    one data set × one learner  → 看这一次的曲线/ROC/混淆矩阵
- *   批实验 (Batches)   N data sets × M learners    → 看跨数据集的排名与显著性
- *
- * They used to be mixed together behind a single list, which made it unclear
- * whether a row was one experiment or part of a comparison.
- */
 const PAGES = [
   { id: 'overview', label: '总览', icon: '◱' },
   { id: 'run', label: '运行实验', icon: '▶' },
@@ -21,13 +12,58 @@ const PAGES = [
   { id: 'runs', label: '单次运行', icon: '◈' },
 ];
 
+/**
+ * The app used to live entirely in component state with no URL, so a result
+ * could only be reached by clicking through the UI. We now mirror the active
+ * view + selection into the URL hash (#/runs/123, #/batches/exp1) so a link can
+ * be opened / shared / reloaded directly — that's what lets an agent deep-link
+ * straight to a specific experiment's result page.
+ */
+function parseHash() {
+  const raw = window.location.hash.replace(/^#\/?/, '').trim();
+  if (!raw) return { page: 'overview', focusRunId: null, focusBatch: null };
+  const [seg, param] = raw.split('/');
+  if (seg === 'run') return { page: 'run', focusRunId: null, focusBatch: null };
+  if (seg === 'batches') {
+    return { page: 'batches', focusRunId: null, focusBatch: param || null };
+  }
+  if (seg === 'runs') {
+    const id = param ? Number(param) : NaN;
+    return { page: 'runs', focusRunId: Number.isNaN(id) ? null : id, focusBatch: null };
+  }
+  return { page: 'overview', focusRunId: null, focusBatch: null };
+}
+
 export default function App() {
-  const [page, setPage] = useState('overview');
+  const initial = parseHash();
+  const [page, setPage] = useState(initial.page);
   const [counts, setCounts] = useState({ runs: 0, batches: 0 });
-  // Set when the user jumps from a finished job to its stored result.
-  const [focusRunId, setFocusRunId] = useState(null);
-  // Jump to the single-run detail view for a specific run id (used by cards
-  // and tables across pages that want to deep-link into a run).
+  // focusRunId: integer run id (deep link #/runs/<id>)
+  // focusBatch: batch id or name (deep link #/batches/<id|name>)
+  const [focusRunId, setFocusRunId] = useState(initial.focusRunId);
+  const [focusBatch, setFocusBatch] = useState(initial.focusBatch);
+
+  // Mirror the current view + selection into the URL hash.
+  useEffect(() => {
+    let hash = '#/overview';
+    if (page === 'run') hash = '#/run';
+    else if (page === 'batches') hash = focusBatch ? `#/batches/${focusBatch}` : '#/batches';
+    else if (page === 'runs') hash = focusRunId != null ? `#/runs/${focusRunId}` : '#/runs';
+    if (window.location.hash !== hash) window.location.hash = hash;
+  }, [page, focusRunId, focusBatch]);
+
+  // Follow manual hash edits (pasted link, back/forward buttons).
+  useEffect(() => {
+    const onHash = () => {
+      const p = parseHash();
+      setPage(p.page);
+      setFocusRunId(p.focusRunId);
+      setFocusBatch(p.focusBatch);
+    };
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+
   const openRun = (id) => {
     setFocusRunId(id);
     setPage('runs');
@@ -99,8 +135,16 @@ export default function App() {
             }}
           />
         )}
-        {page === 'runs' && <RunsView focusRunId={focusRunId} />}
-        {page === 'batches' && <BatchesView onOpenRun={openRun} />}
+        {page === 'runs' && (
+          <RunsView focusRunId={focusRunId} onSelectRun={setFocusRunId} />
+        )}
+        {page === 'batches' && (
+          <BatchesView
+            onOpenRun={openRun}
+            focusBatch={focusBatch}
+            onOpenBatch={setFocusBatch}
+          />
+        )}
       </main>
     </div>
   );

@@ -6,7 +6,7 @@ function basename(p) {
   return String(p || '').split(/[\\/]/).pop() || p;
 }
 
-export default function BatchesView({ onOpenRun }) {
+export default function BatchesView({ onOpenRun, focusBatch, onOpenBatch }) {
   const [batches, setBatches] = useState([]);
   const [runs, setRuns] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -30,6 +30,13 @@ export default function BatchesView({ onOpenRun }) {
     };
   }, []);
 
+  // Deep-link support: open the batch named/id'd in the URL hash (#/batches/<id|name>).
+  useEffect(() => {
+    if (focusBatch == null || !batches.length) return;
+    const id = batches.find((b) => String(b.id) === focusBatch || b.name === focusBatch)?.id;
+    if (id != null) setOpenId(id);
+  }, [focusBatch, batches]);
+
   // A batch is only analysable across data sets, so show how big each one is.
   const stats = useMemo(() => {
     const m = new Map();
@@ -45,7 +52,7 @@ export default function BatchesView({ onOpenRun }) {
   if (openId != null) {
     const batch = batches.find((b) => b.id === openId);
     return (
-      <BatchAnalysis batch={batch} onBack={() => setOpenId(null)} />
+      <BatchAnalysis batch={batch} onBack={() => { setOpenId(null); onOpenBatch?.(null); }} />
     );
   }
 
@@ -102,7 +109,7 @@ export default function BatchesView({ onOpenRun }) {
                   <tr
                     key={b.id}
                     className="clickable"
-                    onClick={() => setOpenId(b.id)}
+                    onClick={() => { setOpenId(b.id); onOpenBatch?.(String(b.id)); }}
                   >
                     <td>
                       <strong>{b.name}</strong>

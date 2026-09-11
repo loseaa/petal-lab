@@ -6,7 +6,7 @@ function basename(p) {
   return String(p || '').split(/[\\/]/).pop() || p;
 }
 
-export default function RunsView({ focusRunId }) {
+export default function RunsView({ focusRunId, onSelectRun }) {
   const [runs, setRuns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -31,7 +31,7 @@ export default function RunsView({ focusRunId }) {
     };
   }, []);
 
-  // Auto-select the run the user jumped to from a finished job.
+  // Auto-select the run the user jumped to from a finished job or a deep link.
   useEffect(() => {
     if (!focusRunId || !runs.length) return;
     const target = runs.find((r) => r.id === focusRunId);
@@ -105,7 +105,7 @@ export default function RunsView({ focusRunId }) {
                 <tr
                   key={r.id}
                   className={`clickable ${selected?.id === r.id ? 'selected' : ''}`}
-                  onClick={() => setSelected(r)}
+                  onClick={() => { setSelected(r); onSelectRun?.(r.id); }}
                 >
                   <td>{r.id}</td>
                   <td title={r.dataset}>
