@@ -121,6 +121,9 @@ static LearnerRegistrar registrar("myLearner", constructor<myLearner>);
 
 ### 6. 构建与验证
 
+> ⚠ **写完 C++ 后务必 `make -j8` 重新编译。** 不重编的话，命令行 `-l<name>` 调到的
+> 仍是旧的 `petal` 引擎，你新增 / 修改的算法根本不会生效——这是最常见的“改了没反应”。
+
 ```bash
 make -j8
 ```
@@ -141,7 +144,7 @@ make -j8
 - [ ] 实现了 `getCapabilities()` 且与实际处理能力一致
 - [ ] `classify()` 输出已归一化
 - [ ] 已加 `static LearnerRegistrar` 注册行
-- [ ] `make -j8` 通过
+- [ ] `make -j8` 通过（**改 C++ 后这一步让改动真正生效**，否则跑的是旧引擎）
 - [ ] 用真实数据跑过一次并核对指标
 
 ## 常见陷阱

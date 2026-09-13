@@ -1,0 +1,3 @@
+# Petal 服务端（lab/petal_lab）仅依赖 Python 标准库，无需第三方包。
+# 此文件保留为约定入口；如需新增依赖（例如未来接入 PyTorch 学习器），在此追加即可。
+# 安装：pip install -r lab/requirements.txt

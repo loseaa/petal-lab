@@ -20,6 +20,7 @@ export const api = {
   run: (id) => getJSON(`/api/runs/${id}`),
   predictions: (id) => getJSON(`/api/runs/${id}/predictions`),
   batches: () => getJSON('/api/batches'),
+  batchProgress: (id) => getJSON(`/api/batches/${id}/progress`),
   datasets: () => getJSON('/api/datasets'),
   compare: (params) => getJSON('/api/compare', params),
   createBatch: async (name, description = '') => {
@@ -36,6 +37,8 @@ export const api = {
   },
 
   availableDatasets: () => getJSON('/api/datasets/available'),
+  datasetAnalysis: () => getJSON('/api/datasets/analysis'),
+  datasetDetail: (name) => getJSON(`/api/datasets/analysis/${encodeURIComponent(name)}`),
   jobs: () => getJSON('/api/jobs'),
   job: (id) => getJSON(`/api/jobs/${id}`),
   submitJob: async (spec) => {
@@ -48,6 +51,17 @@ export const api = {
     if (!res.ok) throw new Error(data.error || `提交失败: ${res.status}`);
     return data;
   },
+  batchRun: async (plan) => {
+    const res = await fetch('/api/batch/run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(plan),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `提交失败: ${res.status}`);
+    return data;
+  },
+
   cancelJob: async (id) => {
     await fetch(`/api/jobs/${id}/cancel`, { method: 'POST' });
   },

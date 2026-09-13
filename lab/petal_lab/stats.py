@@ -41,9 +41,24 @@ CHI2_CRITICAL = {
            6: 10.645, 7: 12.017, 8: 13.362, 9: 14.684, 10: 15.987},
 }
 
+# Metrics for which a *larger* value is better. Everything else (loss, error,
+# RMSE…) is "smaller is better". Ranking must respect this, otherwise
+# higher-is-better metrics such as AUC / MCC get compared backwards and the
+# apparent differences shrink or invert.
+HIGHER_IS_BETTER = {
+    "auc", "mcc", "accuracy", "f1", "f1_score", "precision", "recall",
+    "lift", "roc", "auc_macro", "auc_weighted",
+}
 
-def _rank(values: list[float]) -> list[float]:
-    """Rank with ties sharing the average rank (1 = best = smallest value)."""
+
+def _rank(values: list[float], higher_is_better: bool = False) -> list[float]:
+    """Rank with ties sharing the average rank. 1 = best.
+
+    For "smaller is better" metrics (loss, error, RMSE…) the smallest value gets
+    rank 1; for "higher is better" metrics (AUC, MCC…) the largest value does.
+    """
+    if higher_is_better:
+        values = [-v for v in values]
     order = sorted(range(len(values)), key=lambda i: values[i])
     ranks = [0.0] * len(values)
     i = 0
@@ -136,14 +151,18 @@ def build_matrix(
     return learners, datasets, matrix
 
 
-def average_ranks(matrix: list[list[Optional[float]]]) -> list[float]:
+def average_ranks(
+    matrix: list[list[Optional[float]]], higher_is_better: bool = False
+) -> list[float]:
     """Mean rank per column (algorithm), averaging over rows (data sets)."""
     if not matrix:
         return []
     k = len(matrix[0])
     totals = [0.0] * k
     for row in matrix:
-        ranks = _rank([v if v is not None else float("inf") for v in row])
+        ranks = _rank(
+            [v if v is not None else float("inf") for v in row], higher_is_better
+        )
         for j in range(k):
             totals[j] += ranks[j]
     n = len(matrix)
@@ -184,16 +203,23 @@ def critical_difference(k: int, n: int, alpha: float = 0.05) -> Optional[float]:
 
 
 def cd_groups(ranks: list[float], cd: Optional[float]) -> list[list[int]]:
-    """Indices of algorithms joined by a bar (no significant difference)."""
+    """Indices of algorithms joined by a bar (no significant difference).
+
+    Demšar draws a bar between two *adjacent* algorithms (in rank order) when
+    their rank gap is at most the critical difference. We therefore merge every
+    maximal run of consecutive algorithms whose neighbouring gaps are all <= cd.
+    (A previous implementation broke groups on the span from the leftmost member,
+    which wrongly split runs that should have stayed connected.)
+    """
     if cd is None or not ranks:
         return []
     order = sorted(range(len(ranks)), key=lambda i: ranks[i])
     groups: list[list[int]] = []
     start = 0
-    for i in range(len(order)):
-        if i + 1 < len(order) and ranks[order[i + 1]] - ranks[order[start]] > cd:
-            groups.append(order[start:i + 1])
-            start = i + 1
+    for i in range(1, len(order)):
+        if ranks[order[i]] - ranks[order[i - 1]] > cd:
+            groups.append(order[start:i])
+            start = i
     groups.append(order[start:])
     return [g for g in groups if len(g) > 1]
 
@@ -228,19 +254,51 @@ def compare_batch(
     run_ids: Optional[list[int]] = None,
     alpha: float = 0.05,
 ) -> dict:
-    """Everything the front-end needs to draw a batch comparison."""
-    learners, datasets, matrix = build_matrix(conn, batch_id, metric, run_ids)
-    if not learners or not datasets:
-        return {
-            "metric": metric,
-            "learners": learners,
-            "datasets": datasets,
-            "message": "需要至少两个数据集且各学习器都有结果，才能做跨数据集比较。",
-        }
+    """Everything the front-end needs to draw a batch comparison.
 
-    ranks = average_ranks(matrix)
+    The matrix is always returned (even when incomplete) so the UI can still
+    visualise whatever results exist; `warning` explains gaps (missing learners,
+    failed tasks, an unsupported metric) instead of showing a blank page.
+    """
+    learners, datasets, matrix = build_matrix(conn, batch_id, metric, run_ids)
+    higher_is_better = metric in HIGHER_IS_BETTER
+    ranks = average_ranks(matrix, higher_is_better) if matrix else []
     fr = friedman(matrix, ranks)
-    cd = critical_difference(len(learners), len(datasets), alpha)
+    cd = critical_difference(len(learners), len(datasets), alpha) if matrix else None
+
+    # Pairwise Nemenyi: a pair of algorithms is significantly different when the
+    # gap between their average ranks exceeds the critical difference. This is
+    # exactly what the CD diagram encodes and what "两个值超过 CD 即显著" means.
+    pairwise_significant = False
+    max_gap = None
+    pairwise: list[dict] = []
+    if ranks and len(ranks) >= 2:
+        max_gap = max(ranks) - min(ranks)
+        for a in range(len(ranks)):
+            for b in range(a + 1, len(ranks)):
+                gap = abs(ranks[b] - ranks[a])
+                sig = cd is not None and gap > cd
+                if sig:
+                    pairwise_significant = True
+                pairwise.append({
+                    "a": a, "b": b,
+                    "learner_a": learners[a], "learner_b": learners[b],
+                    "rank_gap": gap, "significant": sig,
+                })
+
+    filled = sum(1 for row in matrix for v in row if v is not None)
+    total_cells = len(datasets) * len(learners) if (learners and datasets) else 0
+
+    warning = None
+    if not learners or not datasets:
+        warning = "本批次还没有任何可用的运行结果（可能任务全部失败或未开始）。"
+    elif total_cells and filled < total_cells:
+        missing = total_cells - filled
+        warning = (
+            f"仅 {filled}/{total_cells} 个「数据集×算法」组合有结果"
+            f"（缺 {missing} 个，可能因任务失败或该指标在某些数据集上缺失）；"
+            f"跨数据集比较需要每个算法在每个数据集上都有结果。"
+        )
 
     return {
         "metric": metric,
@@ -250,9 +308,15 @@ def compare_batch(
         "matrix": matrix,
         "ranks": [
             {"learner": learners[i], "rank": ranks[i]} for i in range(len(learners))
-        ],
+        ] if ranks else [],
         "friedman": fr,
         "critical_difference": cd,
-        "cd_groups": cd_groups(ranks, cd),
-        "win_draw_loss": win_draw_loss(matrix),
+        "cd_groups": cd_groups(ranks, cd) if ranks else [],
+        "win_draw_loss": win_draw_loss(matrix) if matrix else {"pairs": []},
+        "filled": filled,
+        "total_cells": total_cells,
+        "warning": warning,
+        "pairwise_significant": pairwise_significant,
+        "max_rank_gap": max_gap,
+        "pairwise": pairwise,
     }

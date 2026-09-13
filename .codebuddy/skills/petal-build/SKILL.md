@@ -5,6 +5,12 @@ description: 构建、调试与验证 Petal 分类学习系统。当需要编译
 
 # 构建与验证 Petal
 
+> ⚠ **关键：改了 C++ 必须重新编译，否则改动根本不生效。**
+> `petal` 引擎是 C++ 编译出的二进制；`petal-lab`（网页 / server）每次运行调用的都是
+> 这个 `./petal` 文件。凡是改动了 `src/`（或 `thirdparty/`）下的任何 `.cpp` / `.h`，
+> 都必须重新 `make`（见下文）生成新的 `./petal`，改动才会被真正运行到。
+> 只改了 `lab/petal_lab/` 下的 Python 不需要重编 C++，但需**重启 server** 才能生效。
+
 ## 用途
 
 提供 Petal 的构建、调试、清理与常见故障排查流程。

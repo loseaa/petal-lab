@@ -3,13 +3,22 @@
 // Kept as pure data so a spec can be reviewed, reused and exported on its own —
 // which matters when a figure ends up in a paper and someone asks how it was
 // produced.
+//
+// 配色取自 ui.pen 设计稿（森林绿系）：网格/坐标轴用绿系灰，折线/ROC/排名用
+// 绿色主导的离散 scheme，混淆矩阵与数据集×算法热力图用 5 级绿梯度（heat）。
 
 // Light horizontal gridlines make values readable on screen without the chart
 // looking graph-paper-busy.
-const GRID = { grid: true, gridColor: '#eaeef5', gridDash: [2, 3], domainColor: '#cbd5e1' };
-const AXIS = { labelFontSize: 11.5, titleFontSize: 12.5, labelColor: '#334155', titleColor: '#0f172a' };
-const LEGEND = { labelFontSize: 11.5, titleFontSize: 12, labelColor: '#334155', titleColor: '#0f172a' };
-const SCHEME = 'tableau10';
+const GRID = { grid: true, gridColor: '#E3E8DF', gridDash: [2, 3], domainColor: '#D6DDD0' };
+const AXIS = { labelFontSize: 11.5, titleFontSize: 12.5, labelColor: '#4A6B52', titleColor: '#1B3A28' };
+const LEGEND = { labelFontSize: 11.5, titleFontSize: 12, labelColor: '#4A6B52', titleColor: '#1B3A28' };
+// 绿色主导的离散配色，保证多学习器可区分且与主题协调
+const SCHEME = [
+  '#2D5E3A', '#3D6B78', '#A67C2E', '#A6453A', '#6B8F5E',
+  '#7A5C2E', '#4A7C55', '#8A6D3B', '#5C8A5E', '#9C6B3F',
+];
+// 5 级绿梯度（与设计稿 heat-1 ~ heat-5 一致）
+const HEAT = ['#E6EFDF', '#C8DBBC', '#93B48C', '#5C8A5E', '#2D5E3A'];
 
 /**
  * Learning curve with a shaded min–max band across trials.
@@ -105,7 +114,7 @@ export function rocSpec() {
     layer: [
       {
         data: { values: [{ x: 0, y: 0 }, { x: 1, y: 1 }] },
-        mark: { type: 'line', strokeDash: [5, 4], color: '#94a3b8', strokeWidth: 1.4 },
+        mark: { type: 'line', strokeDash: [5, 4], color: '#7A9A80', strokeWidth: 1.4 },
         encoding: {
           x: { field: 'x', type: 'quantitative' },
           y: { field: 'y', type: 'quantitative' },
@@ -176,7 +185,7 @@ export function confusionSpec() {
       y: { field: 't', type: 'ordinal', title: '真实类别', axis: { ...AXIS, grid: false } },
       color: {
         field: 'count', type: 'quantitative', title: '样本数',
-        scale: { scheme: 'blues' }, legend: LEGEND,
+        scale: { range: HEAT }, legend: LEGEND,
       },
       tooltip: [
         { field: 't', title: '真实' },
@@ -236,7 +245,7 @@ export function cdDiagramSpec({ k = 3, points = [], bars = [] } = {}) {
     layer: [
       {
         data: { name: 'bars' },
-        mark: { type: 'rule', strokeWidth: 5, strokeCap: 'round', color: '#0f172a' },
+        mark: { type: 'rule', strokeWidth: 5, strokeCap: 'round', color: '#1B3A28' },
         encoding: {
           x: { field: 'x', type: 'quantitative' },
           x2: { field: 'x2', type: 'quantitative' },
@@ -293,7 +302,7 @@ export function matrixHeatmapSpec() {
       },
       color: {
         field: 'value', type: 'quantitative', title: '0-1 损失',
-        scale: { scheme: 'viridis' }, legend: LEGEND,
+        scale: { range: HEAT }, legend: LEGEND,
       },
       tooltip: [
         { field: 'dataset', title: '数据集' },

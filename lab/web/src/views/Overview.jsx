@@ -11,9 +11,14 @@ export default function Overview({ onNavigate, onOpenRun }) {
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([api.runs({ limit: 500 }), api.batches(), api.datasets()])
-      .then(([runs, batches, ds]) => {
-        if (!cancelled) setData({ runs: runs.runs, batches: batches.batches, datasets: ds.datasets });
+    Promise.all([api.runs({ limit: 500 }), api.batches(), api.datasets(), api.availableDatasets()])
+      .then(([runs, batches, ds, avail]) => {
+        if (!cancelled) setData({
+          runs: runs.runs,
+          batches: batches.batches,
+          datasets: ds.datasets,      // 数据库里出现过的不同数据集（用于统计卡片）
+          available: avail.datasets,  // 磁盘上可跑的数据集（用于动态拼命令的真实路径）
+        });
       })
       .catch((e) => !cancelled && setError(e.message));
     return () => {
@@ -38,10 +43,19 @@ export default function Overview({ onNavigate, onOpenRun }) {
     );
   }
 
-  const { runs, batches, datasets } = data;
+  const { runs, batches, datasets, available } = data;
   const learners = new Set();
   runs.forEach((r) => (r.learners || []).forEach((l) => learners.add(l)));
-  const recent = runs.slice(0, 8);
+  const recent = runs.slice(0, 6);
+
+  // 命令示例用当前项目里真实存在的数据集路径动态拼，绝不写死。
+  const exampleDs = available && available[0];
+  const singleCmd = exampleDs
+    ? `petal ${exampleDs.meta} ${exampleDs.data} -dmdl -v2 -x10 -lnb`
+    : `petal <数据集.pmeta> <数据集.pdata> -dmdl -v2 -x10 -lnb`;
+  const batchCmd = exampleDs
+    ? `petal ${exampleDs.meta} ${exampleDs.data} -dmdl -v2 -x10 -lnb   # 每个数据集×算法各跑一次`
+    : `petal <数据集.pmeta> <数据集.pdata> -dmdl -v2 -x10 -lnb   # 每个数据集×算法各跑一次`;
 
   return (
     <>
@@ -83,24 +97,26 @@ export default function Overview({ onNavigate, onOpenRun }) {
             这两种实验关注的东西不同，所以分开管理：
           </p>
 
-          <div className="card" style={{ margin: '0 0 12px', boxShadow: 'none', background: 'var(--panel-2)' }}>
-            <h2 style={{ fontSize: 13.5 }}>◈ 单次运行</h2>
-            <p className="sub" style={{ marginBottom: 0 }}>
+          <div className="card" style={{ margin: '0 0 12px', boxShadow: 'none', background: 'var(--panel-2)', borderRadius: 14 }}>
+            <h2 style={{ fontSize: 16, fontFamily: 'var(--font-heading)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 8 }}>
+              ◈ 单次运行
+            </h2>
+            <p className="sub" style={{ marginBottom: 10 }}>
               一个数据集 × 一个算法。看的是<strong>这一次</strong>的学习曲线、折间分布、
               ROC/PR、混淆矩阵。
-              <br />
-              <span className="mono">petal-lab run -- data.pm data.pd -x10 -lnb</span>
             </p>
+            <div className="cmd">{singleCmd}</div>
           </div>
 
-          <div className="card" style={{ margin: 0, boxShadow: 'none', background: 'var(--panel-2)' }}>
-            <h2 style={{ fontSize: 13.5 }}>▦ 批实验</h2>
-            <p className="sub" style={{ marginBottom: 0 }}>
+          <div className="card" style={{ margin: 0, boxShadow: 'none', background: 'var(--panel-2)', borderRadius: 14 }}>
+            <h2 style={{ fontSize: 16, fontFamily: 'var(--font-heading)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 8 }}>
+              ▦ 批实验
+            </h2>
+            <p className="sub" style={{ marginBottom: 10 }}>
               多个数据集 × 多个算法。看的是<strong>整体</strong>谁更好：平均排名、
               临界差异图、胜负平、数据集×算法热力图。
-              <br />
-              <span className="mono">petal-lab batch run --name exp1 --learners nb,aode,tan</span>
             </p>
+            <div className="cmd">{batchCmd}</div>
           </div>
 
           <div className="toolbar" style={{ marginTop: 14, marginBottom: 0 }}>
@@ -121,39 +137,29 @@ export default function Overview({ onNavigate, onOpenRun }) {
               还没有数据
             </div>
           ) : (
-            <table className="tbl">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>数据集</th>
-                  <th>算法</th>
-                  <th>批次</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recent.map((r) => (
-                  <tr
-                    key={r.id}
-                    className="clickable"
-                    onClick={() => onOpenRun?.(r.id)}
-                    title="查看运行详情"
-                  >
-                    <td className="muted">{r.id}</td>
-                    <td>{basename(r.dataset)}</td>
-                    <td>
-                      <span className="pill slate">{(r.learners || []).join(', ') || '—'}</span>
-                    </td>
-                    <td>
-                      {r.batch_name ? (
-                        <span className="pill">{r.batch_name}</span>
-                      ) : (
-                        <span className="muted">—</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="runlist">
+              <div className="run-head">
+                <div className="run-accent" />
+                <div className="c-idx"><span className="h-text">#</span></div>
+                <div className="c-ds"><span className="h-text">数据集</span></div>
+                <div className="c-algo"><span className="h-text">算法</span></div>
+                <div className="c-batch"><span className="h-text">批次</span></div>
+              </div>
+              {recent.map((r, i) => (
+                <div
+                  key={r.id}
+                  className={`run-row${i % 2 === 1 ? ' alt' : ''}`}
+                  onClick={() => onOpenRun?.(r.id)}
+                  title="查看运行详情"
+                >
+                  <div className="run-accent" />
+                  <div className="c-idx">{r.id}</div>
+                  <div className="c-ds">{basename(r.dataset)}</div>
+                  <div className="c-algo">{(r.learners || []).join(', ') || '—'}</div>
+                  <div className="c-batch">{r.batch_name || '—'}</div>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       </div>

@@ -54,15 +54,15 @@ petal <metafile> <datafile> [-p<posClassName>] [<test method args>] -l<learner> 
 make -j8
 
 # 决策树可直接处理数值属性
-./petal examples/weather.pm examples/weather.pd -x10 -ldtree
+./petal examples/weather.pmeta examples/weather.pdata -x10 -ldtree
 
 # 贝叶斯类只支持标称属性，需先用 -d 离散化
-./petal examples/weather.pm examples/weather.pd -dmdl -x10 -lnb
-./petal examples/weather.pm examples/weather.pd -dmdl -x10 -laode
+./petal examples/weather.pmeta examples/weather.pdata -dmdl -x10 -lnb
+./petal examples/weather.pmeta examples/weather.pdata -dmdl -x10 -laode
 
 # 训练/测试与流式评估
-./petal examples/weather.pm examples/weather.pd -dmdl -texamples/weather.pd -laode
-./petal examples/weather.pm examples/weather.pd -dmdl -s -laode
+./petal examples/weather.pmeta examples/weather.pdata -dmdl -texamples/weather.pdata -laode
+./petal examples/weather.pmeta examples/weather.pdata -dmdl -s -laode
 ```
 
 | 目的 | 做法 |

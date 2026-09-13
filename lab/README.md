@@ -52,7 +52,7 @@ cd lab/web && npm install && npm run build   # 只需一次，产出静态前端
 
 ```bash
 ./lab/petal-lab run -- \
-    examples/weather.pm examples/weather.pd -dmdl -x10 -lnb
+    examples/weather.pmeta examples/weather.pdata -dmdl -x10 -lnb
 ```
 
 `run` 是 petal 的包装器：照常写 petal 的参数，它会自动加上 `--json`、

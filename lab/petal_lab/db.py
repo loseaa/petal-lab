@@ -43,7 +43,9 @@ CREATE TABLE IF NOT EXISTS batches (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     name        TEXT NOT NULL,
     description TEXT NOT NULL DEFAULT '',
-    created_at  TEXT NOT NULL
+    created_at  TEXT NOT NULL,
+    total_jobs  INTEGER NOT NULL DEFAULT 0,
+    failed_jobs INTEGER NOT NULL DEFAULT 0
 );
 
 -- One petal invocation.
@@ -142,6 +144,16 @@ def _migrate(conn: sqlite3.Connection) -> None:
             (str(version),),
         )
 
+    # 进度/失败计数（v2 之后新增，存量库用 ALTER 补齐；列已存在则忽略）
+    for col, ddl in (
+        ("total_jobs", "INTEGER NOT NULL DEFAULT 0"),
+        ("failed_jobs", "INTEGER NOT NULL DEFAULT 0"),
+    ):
+        try:
+            conn.execute(f"ALTER TABLE batches ADD COLUMN {col} {ddl}")
+        except sqlite3.OperationalError:
+            pass
+
     conn.commit()
 
 
@@ -170,10 +182,10 @@ def _to_beijing_time(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
-def create_batch(conn: sqlite3.Connection, name: str, description: str = "") -> int:
+def create_batch(conn: sqlite3.Connection, name: str, description: str = "", total_jobs: int = 0) -> int:
     cur = conn.execute(
-        "INSERT INTO batches (name, description, created_at) VALUES (?, ?, ?)",
-        (name, description, now()),
+        "INSERT INTO batches (name, description, created_at, total_jobs) VALUES (?, ?, ?, ?)",
+        (name, description, now(), int(total_jobs)),
     )
     conn.commit()
     return int(cur.lastrowid or 0)

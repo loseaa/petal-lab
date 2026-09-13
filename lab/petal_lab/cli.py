@@ -5,13 +5,14 @@ from __future__ import annotations
 # pyright: reportExplicitAny=none, reportAny=none, reportUnknownMemberType=none, reportUnknownArgumentType=none, reportUnknownVariableType=none, reportUnknownParameterType=none, reportUnusedCallResult=none, reportImplicitStringConcatenation=none, reportMissingTypeArgument=error
 
 import argparse
+import os
 import shutil
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
 
-from . import builders, db, ingest, server
+from . import builders, db, ingest, nl_agent, server
 
 
 def default_db() -> Path:
@@ -21,6 +22,10 @@ def default_db() -> Path:
 def default_petal() -> Path:
     """The petal binary built by the top-level Makefile."""
     return Path(__file__).resolve().parent.parent.parent / "petal"
+
+
+# Folders scanned for data sets when planning from natural language.
+DEFAULT_DATASET_ROOTS = ["../data", "../examples"]
 
 
 def _resolve_petal(explicit: str | None) -> Path:
@@ -118,28 +123,10 @@ def discover_datasets(sources: list[str]) -> list[tuple[str, str]]:
     return found
 
 
-def cmd_batch_run(args: argparse.Namespace) -> int:
-    """Run a whole grid: every data set x every learner, filed under one batch."""
-    petal = _resolve_petal(args.petal)
-    datasets = discover_datasets(args.datasets)
-    learners = [x.strip() for x in args.learners.split(",") if x.strip()]
-
-    if not datasets:
-        raise SystemExit("没有找到数据集（需要 .pm 与同名 .pd）")
-    if not learners:
-        raise SystemExit("请用 --learners 指定至少一个算法，例如 --learners nb,aode,tan")
-
-    extra = list(args.extra or [])
-    while extra and extra[0] == "--":   # argparse keeps the "--" separator
-        extra.pop(0)
-    if args.dump_predictions:
-        extra.append("--dump-predictions")
-
-    conn = db.connect(args.db)
-    batch_id = db.get_or_create_batch(conn, args.name)
-
+def _run_grid(conn, petal, datasets, learners, extra, name, batch_id) -> int:
+    """Run every (data set x learner) pair and file results under `batch_id`."""
     total = len(datasets) * len(learners)
-    print(f"批实验「{args.name}」")
+    print(f"批实验「{name}」")
     print(f"  {len(datasets)} 个数据集 × {len(learners)} 个算法 = {total} 次运行\n")
 
     done = failed = 0
@@ -167,8 +154,99 @@ def cmd_batch_run(args: argparse.Namespace) -> int:
             out_path.unlink(missing_ok=True)
 
     print(f"\n完成 {done} 次，失败 {failed} 次。")
-    print(f"查看: petal-lab serve  然后打开「批实验 → {args.name}」")
+    print(f"查看: petal-lab serve  然后打开「批实验 → {name}」")
     return 0 if failed == 0 else 1
+
+
+def cmd_batch_run(args: argparse.Namespace) -> int:
+    """Run a whole grid: every data set x every learner, filed under one batch."""
+    petal = _resolve_petal(args.petal)
+    datasets = discover_datasets(args.datasets)
+    learners = [x.strip() for x in args.learners.split(",") if x.strip()]
+
+    if not datasets:
+        raise SystemExit("没有找到数据集（需要 .pm/.pmeta 与同名数据文件）")
+    if not learners:
+        raise SystemExit("请用 --learners 指定至少一个算法，例如 --learners nb,aode,tan")
+
+    extra = list(args.extra or [])
+    while extra and extra[0] == "--":   # argparse keeps the "--" separator
+        extra.pop(0)
+    if args.dump_predictions:
+        extra.append("--dump-predictions")
+
+    conn = db.connect(args.db)
+    batch_id = db.get_or_create_batch(conn, args.name)
+    try:
+        return _run_grid(conn, petal, datasets, learners, extra, args.name, batch_id)
+    finally:
+        conn.close()
+
+
+def _list_datasets(roots: list[str]) -> list[dict]:  # pyright: ignore[reportMissingTypeArgument]
+    """Walk the configured roots like the server does, returning {name,meta,data}."""
+    out: list[dict] = []  # pyright: ignore[reportMissingTypeArgument]
+    seen = set()
+    for root in roots:
+        base = Path(root)
+        if not base.exists():
+            continue
+        for dirpath, _, filenames in os.walk(str(base), followlinks=True):
+            for fn in filenames:
+                meta = Path(dirpath) / fn
+                suffix = meta.suffix
+                if suffix not in builders.DATA_SUFFIX_BY_META:
+                    continue
+                data = meta.with_suffix(builders.DATA_SUFFIX_BY_META[suffix])
+                if not data.is_file() or str(data) in seen:
+                    continue
+                seen.add(str(data))
+                out.append({"name": meta.stem, "meta": str(meta), "data": str(data)})
+    return sorted(out, key=lambda d: d["name"].lower())
+
+
+def cmd_batch_from_text(args: argparse.Namespace) -> int:
+    """Parse a natural-language request into a batch and (optionally) run it."""
+    datasets = _list_datasets(DEFAULT_DATASET_ROOTS)
+    plan = nl_agent.plan_batch(args.text or "", datasets)
+
+    print("自然语言解析结果：")
+    print(f"  批次名 : {plan['name']}")
+    print(f"  数据集 : {[d['name'] for d in plan['datasets']] or '（未匹配）'}")
+    print(f"  算法   : {plan['learners'] or '（未识别）'}")
+    print(f"  指标   : {plan['metric']}   模式: {plan['mode']}   折数: {plan.get('folds')}")
+    if plan.get("command"):
+        print(f"  等效命令: {plan['command']}")
+    for w in plan.get("warnings", []):
+        print(f"  ⚠ {w}")
+    if not args.yes:
+        ans = input("确认执行？(y/N) ").strip().lower()
+        if ans != "y":
+            print("已取消。")
+            return 0
+
+    petal = _resolve_petal(args.petal)
+    extra = []
+    if plan.get("folds"):
+        extra.append(f"-x{plan['folds']}")
+    if plan.get("discretiser"):
+        extra.append(f"-d{plan['discretiser']}")
+    if plan.get("mode") == "learningCurves":
+        extra.append("-c")
+    if args.dump_predictions:
+        extra.append("--dump-predictions")
+
+    pairs = [(d["meta"], d["data"]) for d in plan.get("datasets", [])]
+    learners = plan.get("learners") or []
+    if not pairs or not learners:
+        raise SystemExit("解析结果缺少数据集或算法，无法执行。")
+
+    conn = db.connect(args.db)
+    batch_id = db.get_or_create_batch(conn, plan["name"])
+    try:
+        return _run_grid(conn, petal, pairs, learners, extra, plan["name"], batch_id)
+    finally:
+        conn.close()
 
 
 def cmd_import(args: argparse.Namespace) -> int:
@@ -289,6 +367,12 @@ def build_parser() -> argparse.ArgumentParser:
     br.add_argument("--dump-predictions", action="store_true")
     br.add_argument("extra", nargs=argparse.REMAINDER, help="额外传给 petal 的参数（用 -- 分隔）")
     br.set_defaults(func=cmd_batch_run)
+    bt = bsub.add_parser("from-text", help="用自然语言描述一批实验并运行")
+    bt.add_argument("text", help="实验需求的自然语言描述")
+    bt.add_argument("--yes", "-y", action="store_true", help="跳过确认直接执行")
+    bt.add_argument("--petal", help="petal 可执行文件路径")
+    bt.add_argument("--dump-predictions", action="store_true")
+    bt.set_defaults(func=cmd_batch_from_text)
 
     i = sub.add_parser("import", help="导入已有的 JSON 结果文件")
     i.add_argument("files", nargs="+")

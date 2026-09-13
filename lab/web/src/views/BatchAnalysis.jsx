@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '../api.js';
 import Chart from '../components/Chart.jsx';
+import StatusBadge from '../components/StatusBadge.jsx';
 import RunDetail from './RunDetail.jsx';
 import { rankSpec, cdDiagramSpec, matrixHeatmapSpec } from '../charts/specs.js';
 
@@ -22,24 +23,40 @@ export default function BatchAnalysis({ batch, onBack }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [openRun, setOpenRun] = useState(null);
+  const [progress, setProgress] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    Promise.all([
-      api.compare({ batch_id: batch.id, metric }),
-      api.runs({ batch_id: batch.id, limit: 1000 }),
-    ])
-      .then(([c, r]) => {
-        if (cancelled) return;
-        setData(c);
-        setRuns(r.runs || []);
-        setError(null);
-      })
-      .catch((e) => !cancelled && setError(e.message))
-      .finally(() => !cancelled && setLoading(false));
+    let timer;
+    let first = true;
+    const load = () => {
+      if (first) setLoading(true);
+      Promise.all([
+        api.compare({ batch_id: batch.id, metric }),
+        api.runs({ batch_id: batch.id, limit: 1000 }),
+        api.batchProgress(batch.id),
+      ])
+        .then(([c, r, p]) => {
+          if (cancelled) return;
+          setData(c);
+          setRuns(r.runs || []);
+          setProgress(p);
+          setError(null);
+        })
+        .catch((e) => !cancelled && setError(e.message))
+        .finally(() => {
+          if (first) {
+            setLoading(false);
+            first = false;
+          }
+        });
+    };
+    load();
+    // 批实验任务是异步跑的，定时刷新以实时显示逐渐完成的运行
+    timer = setInterval(load, 3000);
     return () => {
       cancelled = true;
+      clearInterval(timer);
     };
   }, [batch.id, metric]);
 
@@ -74,6 +91,7 @@ export default function BatchAnalysis({ batch, onBack }) {
     return { points, bars };
   }, [data]);
 
+  const metricLabel = METRICS.find((m) => m.id === metric)?.label || metric;
   const fr = data?.friedman;
   const enough = (fr?.n_datasets ?? 0) >= 2;
 
@@ -114,25 +132,97 @@ export default function BatchAnalysis({ batch, onBack }) {
         </select>
       </div>
 
+      {progress && (progress.total > 0 || runs.length > 0 || progress.failed > 0) && (() => {
+        const total = progress.total || runs.length;
+        const done = progress.done ?? runs.length;
+        const running = progress.running || 0;
+        const pending = progress.pending || 0;
+        const failed = progress.failed || 0;
+        const percent = progress.percent ?? 100;
+        const active = (running + pending) > 0;
+        const allFailed = failed > 0 && done === 0;
+        return (
+          <div className="card batch-progress">
+            <div className="bp-head">
+              <strong>{active ? '批处理进行中…' : allFailed ? '批处理失败' : '批处理已完成'}</strong>
+              <span className="muted">
+                {done} / {total} 次运行成功
+                {active && ` · 运行中 ${running}${pending ? ` · 排队 ${pending}` : ''}`}
+                {failed > 0 && ` · 失败 ${failed}`}
+              </span>
+            </div>
+            <div className="bp-track">
+              <div className={`bp-bar ${active ? 'live' : allFailed ? 'fail' : 'done'}`} style={{ width: `${percent}%` }} />
+            </div>
+          </div>
+        );
+      })()}
+
+      {progress?.tasks?.length > 0 && (
+        <div className="card task-states">
+          <h2>任务状态（状态机）</h2>
+          <div className="sm-legend">
+            {['pending', 'running', 'done', 'failed', 'cancelled'].map((s) => (
+              <span key={s} className="sm-step"><StatusBadge state={s} /></span>
+            ))}
+            <span className="sm-note">排队中 → 运行中 → 完成 / 失败 / 已取消</span>
+          </div>
+          <table className="tbl">
+            <thead>
+              <tr><th>数据集</th><th>算法</th><th>状态</th><th>说明</th></tr>
+            </thead>
+            <tbody>
+              {progress.tasks.map((t) => (
+                <tr key={t.id}>
+                  <td>{basename(t.dataset) || '—'}</td>
+                  <td>{t.learner || '—'}</td>
+                  <td><StatusBadge state={t.status} /></td>
+                  <td className="muted" style={{ fontSize: 12 }}>
+                    {t.error
+                      || (t.status === 'running' ? '执行中…' : t.status === 'pending' ? '等待并发槽' : '')}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {data?.warning && (
+        <div className="notice" style={{ marginBottom: 16 }}>
+          {data.warning}
+          {progress?.failed ? ` 本批次有 ${progress.failed} 个任务失败（结果未入库）。` : ''}
+        </div>
+      )}
+
+      {(!data || data.datasets?.length === 0) && !loading && (
+        <div className="empty">
+          本批次没有任何可用的运行结果。
+          {progress?.failed ? ` 其中 ${progress.failed} 个任务失败。` : ''}
+          可在「批实验」页用相同设置重新运行该批次。
+        </div>
+      )}
+
       {!loading && !enough && (
         <div className="notice">
           这个批次目前只有 {fr?.n_datasets ?? 0} 个数据集，
           跨数据集统计需要<strong>至少 2 个</strong>（且每个算法在每个数据集上都有结果）。
-          继续用 <span className="mono">petal-lab run --batch {batch.name}</span> 添加更多数据集。
+          继续在网页上提交更多数据集到本批次。
         </div>
       )}
 
       {enough && fr && (
         <>
           <div className="card">
-            <h2>
+            <h2 style={{ fontSize: 19 }}>
               统计检验
-              <span className="tag">Friedman + Nemenyi</span>
+              <span className="pill accent" style={{ fontFamily: 'var(--font-code)', fontSize: 11 }}>Friedman + Nemenyi</span>
             </h2>
             <p className="sub">
-              先把每个数据集内部的算法排名求平均，再用 Friedman 检验判断整体是否存在差异。
+              先在每个数据集内部排名并求平均排名，再用 Friedman 整体检验与 Nemenyi 临界差异（CD）做两两比较。
+              只要有两个算法的平均排名差超过 CD，即判定为存在显著差异（与下方 CD 图一致）。
             </p>
-            <div className="chips">
+            <div className="chips mini">
               <div className="chip">
                 <span className="k">数据集 N</span>
                 <span className="v">{fr.n_datasets}</span>
@@ -153,24 +243,47 @@ export default function BatchAnalysis({ batch, onBack }) {
                 <span className="k">临界差异 CD</span>
                 <span className="v">{data.critical_difference?.toFixed(4) ?? '—'}</span>
               </div>
-              <div className={`chip ${fr.significant ? 'ok' : 'warn'}`}>
+              <div className={`chip ${data.pairwise_significant ? 'ok' : 'warn'}`}>
                 <span className="k">结论</span>
-                <span className="v">{fr.significant ? '存在显著差异' : '无显著差异'}</span>
+                <span className="v">{data.pairwise_significant ? '存在显著差异' : '无显著差异'}</span>
               </div>
             </div>
-            {!fr.significant && (
+            {!data.pairwise_significant && (
               <div className="notice" style={{ marginTop: 14, marginBottom: 0 }}>
-                χ² = {fr.statistic?.toFixed(4)} 未超过临界值 {fr.critical_value?.toFixed(4)}，
-                因此不能认为这些算法有显著差异。
+                所有算法的平均排名两两差距均不超过临界差异 CD（{data.critical_difference?.toFixed(4)}）。
                 {fr.n_datasets < 10 &&
-                  ` 注意：只有 ${fr.n_datasets} 个数据集时检验功效很低，
-                   "不显著"往往只是样本不足，并不等于算法等价。`}
+                  ` 注意：仅 ${fr.n_datasets} 个数据集时检验功效很低，"不显著"往往只是样本不足，并不等于算法等价。`}
+              </div>
+            )}
+            {data.pairwise?.length > 0 && (
+              <div style={{ marginTop: 14 }}>
+                <h3 style={{ fontSize: 14, marginBottom: 8 }}>两两差异（平均排名差 vs CD）</h3>
+                <table className="tbl">
+                  <thead>
+                    <tr><th>算法 A</th><th>算法 B</th><th>排名差</th><th>判定</th></tr>
+                  </thead>
+                  <tbody>
+                    {data.pairwise.map((p, i) => (
+                      <tr key={i}>
+                        <td>{p.learner_a}</td>
+                        <td>{p.learner_b}</td>
+                        <td>{p.rank_gap.toFixed(3)}</td>
+                        <td>
+                          {p.significant
+                            ? <span style={{ color: 'var(--danger)', fontWeight: 600 }}>差异显著</span>
+                            : <span className="muted">不显著</span>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>
 
           {cd && (
             <Chart
+              plain
               title="临界差异图（Critical Difference）"
               description="点表示算法的平均排名，越靠左越好；粗横线连接的算法之间差异不显著（排名差小于 CD）。"
               spec={cdDiagramSpec({ k: data.learners.length, points: cd.points, bars: cd.bars })}
@@ -179,19 +292,11 @@ export default function BatchAnalysis({ batch, onBack }) {
 
           {data.ranks?.length > 0 && (
             <Chart
+              plain
               title="平均排名"
               description="在每个数据集内排名后取平均，1 为最优。"
               spec={rankSpec()}
               data={rankChartData}
-            />
-          )}
-
-          {heat.length > 0 && (
-            <Chart
-              title="数据集 × 算法"
-              description="用于发现「某算法在特定数据集上失效」——平均排名看不出这类问题。"
-              spec={matrixHeatmapSpec()}
-              data={heatChartData}
             />
           )}
 
@@ -224,6 +329,16 @@ export default function BatchAnalysis({ batch, onBack }) {
             </div>
           )}
         </>
+      )}
+
+      {heat.length > 0 && (
+        <Chart
+          plain
+          title={`数据集 × 算法（${metricLabel}）`}
+          description="颜色越浅越好（0-1 损失越小越浅）。空缺格子表示该组合暂无结果——任务失败或所选指标在该数据集上缺失。"
+          spec={matrixHeatmapSpec()}
+          data={heatChartData}
+        />
       )}
 
       <div className="card">

@@ -24,6 +24,11 @@ description: 在 Petal 上运行实验并查看结果。当需要运行单次或
 - 已构建前端：`cd lab/web && npm install && npm run build`。`serve` 读的是 `lab/web/dist`，
   否则网页只有 API、看不到任何图表。
 
+> ⚠ **若改过 `src/` 下的 C++ 引擎代码，跑实验前必须先 `make -j8`。** 否则 `petal-lab`
+> 调用的仍是旧的 `./petal` 二进制，实验结果与你的修改对不上，排查时极易误判为
+> “算法不对 / 数据不对”，其实是没重编。改 Python（`lab/petal_lab/`）则无需重编，
+> 但需重启 `serve`。
+
 ## 三类入口
 
 ### 1. 单次实验
@@ -32,7 +37,7 @@ description: 在 Petal 上运行实验并查看结果。当需要运行单次或
 ./lab/petal-lab run -- <数据集.meta> <数据集.data> -x5 -l<learner> [-d]
 ```
 
-- 例：`./lab/petal-lab run -- data/weather.pm data/weather.pd -x5 -lnb`
+- 例：`./lab/petal-lab run -- data/weather.pmeta data/weather.pdata -x5 -lnb`
 - `--` 之后是**原样传给 petal** 的参数；`--json` 由 `petal-lab` 自动插入，无需手写。
 - `--batch <名称>`：把这次运行归入某批次（不存在则自动创建），之后在 Web 的"批实验"里聚到一起对比。
 - `--dump-predictions`：同时导出逐样本预测，前端才能画 ROC / PR 曲线与混淆矩阵。
@@ -46,7 +51,7 @@ description: 在 Petal 上运行实验并查看结果。当需要运行单次或
     -- -x5 -d
 ```
 
-- `--datasets`：一个目录（自动扫描其中的 `.pm`/`.pd` 对）或多个 `.pm` 文件。
+- `--datasets`：一个目录（自动扫描其中的 `.pmeta`/`.pdata` 对）或多个 `.pmeta` 文件。
 - `--learners`：逗号分隔；`--` 之后是传给 petal 的公共参数（如 `-x5 -d`）。
 - 全部结束后，打开 Web → "批实验" → 批次名，可逐次查看，也可横向对比。
 

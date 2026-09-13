@@ -25,7 +25,7 @@ function download(blob, filename) {
   URL.revokeObjectURL(url);
 }
 
-export default function Chart({ title, description, spec, data }) {
+export default function Chart({ title, description, spec, data, plain }) {
   const containerRef = useRef(null);
   const viewRef = useRef(null);
   const [ready, setReady] = useState(false);
@@ -102,7 +102,7 @@ export default function Chart({ title, description, spec, data }) {
   }
 
   return (
-    <div className="chart-card">
+    <div className={plain ? 'card analysis-card' : 'chart-card'}>
       <div className="head">
         <h2>{title}</h2>
         <div className="actions">

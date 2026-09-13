@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api.js';
+import StatusBadge from '../components/StatusBadge.jsx';
 
 const LEARNERS = ['nb', 'aode', 'tan', 'kdb', 'cbn', 'gnb', 'a2de', 'a3de', 'DTree', 'AdaBoost'];
 const DISCRETISERS = [
@@ -9,10 +10,6 @@ const DISCRETISERS = [
   { id: 'equal-frequency', label: '等频离散化' },
   { id: 'equal-depth', label: '等深离散化' },
 ];
-
-const STATUS_STYLE = {
-  pending: 'slate', running: 'cyan', done: 'green', failed: 'amber', cancelled: 'slate',
-};
 
 function basename(p) {
   return String(p || '').split(/[\\/]/).pop() || p;
@@ -125,9 +122,9 @@ export default function RunExperiment({ onViewRun }) {
       </div>
 
       <div className="grid2" style={{ gridTemplateColumns: 'minmax(380px, 36%) 1fr' }}>
-        <form className="card" onSubmit={submit} style={{ marginBottom: 0 }}>
-          <h2>参数</h2>
-          <p className="sub">这些参数会拼成一条 petal 命令。</p>
+        <form className="card form-pill" onSubmit={submit} style={{ marginBottom: 0 }}>
+          <h2>运行参数</h2>
+          <p className="sub">配置完成后点击运行，petal 会在本地执行。</p>
 
           <div className="field">
             <label>数据集</label>
@@ -209,8 +206,7 @@ export default function RunExperiment({ onViewRun }) {
                   <button
                     type="button"
                     key={l}
-                    className={`btn ${on ? 'primary' : ''}`}
-                    style={{ padding: '5px 11px' }}
+                    className={`algo-chip ${on ? 'on' : ''}`}
                     onClick={() => toggleLearner(l)}
                   >
                     {l}
@@ -236,7 +232,7 @@ export default function RunExperiment({ onViewRun }) {
               {submitting ? '运行中…' : '运行'}
             </button>
             {submitting && (
-              <button className="btn danger" type="button" onClick={cancel}>取消</button>
+              <button className="btn danger-outline" type="button" onClick={cancel}>取消</button>
             )}
           </div>
         </form>
@@ -245,11 +241,7 @@ export default function RunExperiment({ onViewRun }) {
           <div className="card">
             <h2>
               输出
-              {job && (
-                <span className={`pill ${STATUS_STYLE[job.status] || 'slate'}`}>
-                  {job.status}
-                </span>
-              )}
+              {job && <StatusBadge state={job.status} />}
             </h2>
             <p className="sub">
               {job ? <span className="mono">{job.command}</span> : '提交后，petal 的输出会实时显示在这里。'}
@@ -257,10 +249,14 @@ export default function RunExperiment({ onViewRun }) {
 
             {pct !== null && (
               <div className="progress">
-                <div className="bar" style={{ width: `${pct}%` }} />
-                <span className="label">
-                  {job.progress.label || `${job.progress.current}/${job.progress.total}`} · {pct}%
-                </span>
+                <div className="meta">
+                  <span>{job.progress.label || `${job.progress.current}/${job.progress.total} 个任务`}</span>
+                  <span className="pct">{pct}%</span>
+                </div>
+                <div className="track">
+                  <div className="bar" style={{ width: `${pct}%` }} />
+                  <span className="label">{pct}%</span>
+                </div>
               </div>
             )}
 

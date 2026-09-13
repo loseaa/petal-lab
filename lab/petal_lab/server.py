@@ -17,9 +17,9 @@ import time
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, unquote, urlparse
 
-from . import builders, db, jobs, stats
+from . import builders, db, jobs, stats, nl_agent, dataset_meta
 
 # Folders the web UI is allowed to load data sets from.
 DEFAULT_DATASET_ROOTS = [
@@ -107,6 +107,35 @@ class Api:
         return sorted(out, key=lambda d: d["name"].lower())
 
     # ------------------------------------------------------------------ reads
+
+    def dataset_analysis(self) -> list[dict]:
+        """Per-dataset metadata used by the data-analysis page and batch sorting."""
+        out = []
+        for ds in self.available_datasets():
+            m = dataset_meta.analyze_dataset(ds["meta"], ds["data"])
+            out.append({
+                "name": ds["name"], "meta": ds["meta"], "data": ds["data"], "size": ds["size"],
+                "n_attributes": m["n_attributes"], "n_predictors": m["n_predictors"],
+                "n_class_attrs": m["n_class_attrs"], "n_classes": m["n_classes"],
+                "class_attr_name": m["class_attr_name"], "class_labels": m["class_labels"],
+                "class_type": m["class_type"], "n_records": m["n_records"],
+            })
+        return out
+
+    def dataset_detail(self, name: str) -> dict | None:
+        """Full analysis of one data set, including the class distribution."""
+        for ds in self.available_datasets():
+            if ds["name"] == name:
+                m = dataset_meta.analyze_dataset(ds["meta"], ds["data"], compute_distribution=True)
+                return {
+                    "name": ds["name"], "meta": ds["meta"], "data": ds["data"], "size": ds["size"],
+                    "n_attributes": m["n_attributes"], "n_predictors": m["n_predictors"],
+                    "n_class_attrs": m["n_class_attrs"], "n_classes": m["n_classes"],
+                    "class_attr_name": m["class_attr_name"], "class_labels": m["class_labels"],
+                    "class_type": m["class_type"], "n_records": m["n_records"],
+                    "attributes": m["attributes"], "class_distribution": m["class_distribution"],
+                }
+        return None
 
     def datasets(self) -> list[dict]:
         conn = self._conn()
@@ -212,9 +241,18 @@ class Api:
     def batches(self) -> list[dict]:
         conn = self._conn()
         try:
-            return db.list_batches(conn)
+            rows = db.list_batches(conn)
+            out = []
+            for d in rows:
+                d = dict(d)
+                d["progress"] = self.manager.batch_progress(d["id"])
+                out.append(d)
+            return out
         finally:
             conn.close()
+
+    def batch_progress(self, batch_id: int) -> dict:
+        return self.manager.batch_progress(batch_id)
 
     def compare(self, params: dict) -> dict:
         conn = self._conn()
@@ -248,6 +286,57 @@ class Api:
             return {"ok": True}
         finally:
             conn.close()
+
+    def plan_nl_batch(self, text: str) -> dict:
+        datasets = self.available_datasets()
+        return nl_agent.plan_batch(text or "", datasets)
+
+    def run_batch_plan(self, plan: dict) -> dict:
+        """Launch a parsed natural-language plan: one job per data set x learner."""
+        learners = plan.get("learners") or []
+        if not learners:
+            raise ValueError("未选择任何算法，无法创建批次")
+        datasets = plan.get("datasets") or []
+        if not datasets:
+            raise ValueError("未选择任何数据集，无法创建批次")
+        total = len(datasets) * len(learners)
+
+        conn = db.connect(self.db_path)
+        try:
+            bid = db.create_batch(
+                conn, plan.get("name", "nl-batch"), plan.get("description", ""),
+                total_jobs=total,
+            )
+        finally:
+            conn.close()
+        mode = plan.get("mode", "xval")
+        folds = plan.get("folds") or 10
+        discretiser = plan.get("discretiser") or ""
+        jobs_out = []
+        for ds in plan.get("datasets", []):
+            for learner in learners:
+                spec = {
+                    "meta": ds["meta"], "data": ds["data"], "learners": [learner],
+                    "mode": mode, "folds": folds, "discretiser": discretiser,
+                    "batch": bid,
+                }
+                argv, meta = builders.build_command(spec, self.dataset_roots)
+                cmd = [self.petal_path] + argv
+                with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as tmp:
+                    out_path = Path(tmp.name)
+                insert_at = 3 if len(argv) >= 2 and not argv[0].startswith("-") else 1
+                cmd.insert(insert_at, f"--json={out_path}")
+                display = " ".join(str(c) for c in cmd).replace(str(out_path), "<json>")
+                job = self.manager.submit(
+                    cmd, display=display, dataset=meta.get("dataset", ""),
+                    learner=learner, batch_name=plan.get("name"),
+                    batch_id=bid, total=folds,
+                )
+                # 与 submit_job 一样：把 petal 的 --json 临时文件路径交给 job，
+                # 否则任务跑完后 _file_result 拿不到结果文件，运行永远不入库。
+                job._result_path = str(out_path)
+                jobs_out.append(job.snapshot())
+        return {"batch_id": bid, "jobs": jobs_out}
 
     def delete_run(self, run_id: int) -> dict:
         conn = self._conn()
@@ -380,6 +469,16 @@ class Handler(BaseHTTPRequestHandler):
             return self._send_json({"datasets": api.datasets()})
         if path == "/api/datasets/available":
             return self._send_json({"datasets": api.available_datasets()})
+        if path == "/api/datasets/analysis":
+            return self._send_json({"datasets": api.dataset_analysis()})
+        if path.startswith("/api/datasets/analysis/"):
+            name = unquote(path.rstrip("/").split("/")[-1])
+            if not name:
+                return self._send_json({"error": "missing dataset name"}, 400)
+            detail = api.dataset_detail(name)
+            if detail is None:
+                return self._send_json({"error": "dataset not found"}, 404)
+            return self._send_json(detail)
         if path == "/api/jobs":
             return self._send_json({"jobs": api.list_jobs()})
 
@@ -400,6 +499,12 @@ class Handler(BaseHTTPRequestHandler):
             return self._send_json({"runs": api.runs(params)})
         if path == "/api/batches":
             return self._send_json({"batches": api.batches()})
+        if path.startswith("/api/batches/") and path.endswith("/progress"):
+            try:
+                bid = int(path.rstrip("/").split("/")[-2])
+            except (IndexError, ValueError):
+                return self._send_json({"error": "bad batch id"}, 400)
+            return self._send_json(api.batch_progress(bid))
         if path == "/api/compare":
             return self._send_json(api.compare(params))
 
@@ -428,6 +533,12 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send_json(self.api.cancel_job(int(parts[3])))
             if url.path == "/api/batches":
                 return self._send_json(self.api.create_batch(self._body()), 201)
+            if url.path == "/api/nl-batch":
+                return self._send_json(self.api.plan_nl_batch(self._body().get("text", "")), 200)
+            if url.path == "/api/nl-batch/run":
+                return self._send_json(self.api.run_batch_plan(self._body()), 201)
+            if url.path == "/api/batch/run":
+                return self._send_json(self.api.run_batch_plan(self._body()), 201)
             parts = url.path.split("/")
             if len(parts) == 5 and parts[2] == "runs" and parts[4] == "batch":
                 payload = self._body()
